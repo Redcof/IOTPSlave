@@ -4,7 +4,7 @@ import os
 
 from IOTPTransactionData import IOTPTransactionData
 from IOTPTransactionTypeCommand import IOTPTransactionTypeCommand
-from S4Timer import S4Timer
+from S4Timer.S4Timer import S4Timer
 
 _author_ = "int_soumen"
 _date_ = "02-08-2018"
@@ -44,8 +44,9 @@ INDEX_OPERAND_PIN = 1
 
 class IOTPSlave:
 
-    def __init__(self):
+    def __init__(self, slave_home):
         self.init_ok = False
+        self.slave_home = slave_home
         self.connection_ok = False
         self.handshake_done = False
         self.status_code = 0
@@ -77,7 +78,7 @@ class IOTPSlave:
         doc_calculated = 0
         aoc_calculated = 0
 
-        dir_path = os.path.dirname(os.path.realpath(__file__))
+        dir_path = self.slave_home
         file = open(dir_path + '/iotp.slaveconf')
 
         # load the configuration to memory
@@ -216,17 +217,42 @@ class IOTPSlave:
             print "RX: {}".format(server_data)
             # if data available
             if server_data is not "":
-                # process server data C000200151D10001
+                # process server data C 0001 0014 1 D 2 0001
                 x = IOTPTransactionData(server_data, IOTP_SLAVE_CONF[KEY_SLAVE_ID])
+                status = 200
                 if x.get_trans_type_id() is IOTPTransactionData.RequestType.COMMAND:
                     r = IOTPTransactionTypeCommand(x)
                     while r.has_next():
                         inf = r.next_operand_info()
-                        # TODO Process the command
                         print inf
+                        operand_type = inf[0]
+                        operand_id = inf[1]
+                        operation = inf[2]
 
-                print "TX: 200\\n"
-                self.server_connection.sendall("200\n")
+                        status = 500
+
+                        try:
+                            """ Find PIN """
+                            HWConf = HARDWARE_CONF[operand_id]
+                            pin_type = HWConf[0]
+                            if pin_type == operand_type:
+                                pin = HWConf[1]
+                                if pin_type == DIGITAL_OPERAND:
+                                    # TODO Perform Digital Operation
+                                    status = 200
+                                    pass
+                                elif pin_type == ANALOG_OPERAND:
+                                    # TODO Perform Analog Operation
+                                    status = 200
+                                    pass
+                                else:
+                                    break
+                        except:
+                            status = 404
+                            break
+                            pass
+                print "TX: {}\\n".format(status)
+                self.server_connection.sendall(str(status) + "\n")
 
         return self.connection_ok
 

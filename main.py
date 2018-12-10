@@ -1,5 +1,7 @@
-from IOTPSlave import IOTPSlave
+import os
 import time
+
+from IOTPSlave.IOTPSlave import IOTPSlave
 
 _author_ = "int_soumen"
 _date_ = "02-08-2018"
@@ -10,8 +12,8 @@ _date_ = "02-08-2018"
 if __name__ == "__main__":
     _version_ = "1.0.0"
     print "Welcome to IOTP Slave version " + _version_
-
-    slave = IOTPSlave()
+    home = os.path.dirname(os.path.realpath(__file__))
+    slave = IOTPSlave(home)
     slave.init_slave()
 
     while True:
