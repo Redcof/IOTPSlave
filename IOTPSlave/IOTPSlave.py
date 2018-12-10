@@ -1,11 +1,12 @@
 import socket
 import time
-import os
-import RPi.GPIO as GPIO
-import regex as regex
+import re as regex
 
+from IOTPTransactionResponse import IOTPTransactionResponse
+from IOTPTransactionTypeInterrogation import IOTPTransactionTypeInterrogation
 from IOTPTransactionData import IOTPTransactionData
 from IOTPTransactionTypeCommand import IOTPTransactionTypeCommand
+from S4Hw.S4HwInterface import init_gpio, operate_gpio_digital, operate_gpio_analog, get_gpio_status
 from S4Timer.S4Timer import S4Timer
 
 _author_ = "int_soumen"
@@ -22,8 +23,8 @@ KEY_PORT = "port"
 KEY_AUTHOR = "author"
 KEY_DATE = "date"
 
-DIGITAL_OPERAND = 0xd
-ANALOG_OPERAND = 0xa
+DIGITAL_OPERAND_TYPE = 0xd
+ANALOG_OPERAND_TYPE = 0xa
 
 DEFAULT_OPERAND = 0x0
 
@@ -41,7 +42,9 @@ HARDWARE_CONF = [
 ]
 
 INDEX_OPERAND_TYPE = 0
-INDEX_OPERAND_PIN = 1
+INDEX_OPERAND_ID = 1
+INDEX_GPIO = 2
+INDEX_OPERATION = 2
 
 
 class IOTPSlave:
@@ -120,9 +123,9 @@ class IOTPSlave:
                 print k
                 # check if digital operand
                 try:
-                    v = IOTP_SLAVE_CONF[KEY_DIGITAL_OPERAND_PREFIX + str(k + 1)]
-                    if v is not None:
-                        HARDWARE_CONF[k] = (DIGITAL_OPERAND, int(v), (k + 1))
+                    gpio = IOTP_SLAVE_CONF[KEY_DIGITAL_OPERAND_PREFIX + str(k + 1)]
+                    if gpio is not None:
+                        HARDWARE_CONF[k] = (DIGITAL_OPERAND_TYPE, (k + 1), int(gpio))
                         doc_calculated += 1
                         self.digital_operand_list += "d{},".format(k + 1)
                         continue
@@ -131,9 +134,9 @@ class IOTPSlave:
 
                 # check if analog operand
                 try:
-                    v = IOTP_SLAVE_CONF[KEY_ANALOG_OPERAND_PREFIX + str(k + 1)]
-                    if v is not None:
-                        HARDWARE_CONF[k] = (ANALOG_OPERAND, int(v), (k + 1))
+                    gpio = IOTP_SLAVE_CONF[KEY_ANALOG_OPERAND_PREFIX + str(k + 1)]
+                    if gpio is not None:
+                        HARDWARE_CONF[k] = (ANALOG_OPERAND_TYPE, (k + 1), int(gpio))
                         aoc_calculated += 1
                         self.analog_operand_list += "a{},".format(k + 1)
                         continue
@@ -146,26 +149,16 @@ class IOTPSlave:
 
             self.digital_operand_list = self.digital_operand_list.rstrip(",")
             self.analog_operand_list = self.analog_operand_list.rstrip(",")
-            
-            # prepare HW GPIO
-            GPIO.setmode(GPIO.BCM)
-            GPIO.setwarnings(False)
-            for k in range(0, len(HARDWARE_CONF)):
-                pin = HARDWARE_CONF[k]
-                if pin is None:
-                    print "-------"
-                    pass
-                else:
-                    GPIO.setup(pin[1], GPIO.OUT)
-                    print "+++++", pin
+
+            # configure GPIO for HW operations
+            init_gpio(HARDWARE_CONF)
+
             self.init_ok = True
             print "Configuration OK"
             break  # while loop
 
         if self.init_ok is not True:
             print "Configuration filed"
-       
-            
 
     def init_connection(self):
         if self.init_ok is not True:
@@ -242,58 +235,80 @@ class IOTPSlave:
             server_data = self.read_line()
             print "RX: {}".format(server_data)
             # if data available
-            if server_data is not "":
-                # process server data C 0001 0014 1 D 2 0001
-                status = (300, 'Invalid request')
+            if server_data is not "" and server_data is not None:
                 try:
-                    x = IOTPTransactionData(server_data, IOTP_SLAVE_CONF[KEY_SLAVE_ID])
-                    if x.get_trans_type_id() is IOTPTransactionData.RequestType.COMMAND:
-                        r = IOTPTransactionTypeCommand(x)
+                    iotp_response = IOTPTransactionResponse(400)
+                    iotp_request = IOTPTransactionData(server_data, IOTP_SLAVE_CONF[KEY_SLAVE_ID])
+
+                    # command request
+                    if iotp_request.get_trans_type_id() is IOTPTransactionData.RequestType.COMMAND:
+                        # process server data C 0001 0014 1 D 2 0001
+                        r = IOTPTransactionTypeCommand(iotp_request)
                         while r.has_next():
                             inf = r.next_operand_info()
-                            print inf
-                            operand_type = inf[0]
-                            operand_id = inf[1]
-                            operation = inf[2]
-
-                            status = (500, 'Slave error')
+                            # print inf
+                            operand_type = inf[INDEX_OPERAND_TYPE]
+                            operand_id = inf[INDEX_OPERAND_ID]
+                            operation = inf[INDEX_OPERATION]
 
                             try:
-                                """ Find PIN """
+                                """ Search PIN """
                                 HWConf = None
                                 for k in range(0, len(HARDWARE_CONF)):
-                                    pin_c = HARDWARE_CONF[k]
-                                    if pin_c[2] is operand_id:
-                                        HWConf = pin_c
+                                    hw_c = HARDWARE_CONF[k]
+                                    if hw_c is not None and hw_c[INDEX_OPERAND_ID] is operand_id:
+                                        HWConf = hw_c
                                         break
-                                    
-                                print HWConf
-                                
-                                pin_type = HWConf[0]
-                                
-                                if pin_type == operand_type:
-                                    pin = HWConf[1]
-                                    if pin_type == DIGITAL_OPERAND:
-                                        # TODO Perform Digital Operation
-                                        print operation, pin
-                                        if operation is 1:
-                                            GPIO.output(pin,GPIO.HIGH)
-                                        if operation is 0:
-                                            GPIO.output(pin,GPIO.LOW)
-                                        status = (200, 'OK')
-                                        pass
-                                    elif pin_type == ANALOG_OPERAND:
-                                        # TODO Perform Analog Operation
-                                        pin
-                                        status = (200, 'OK')
-                                        pass
+
+                                # print HWConf
+                                if HWConf is None:
+                                    iotp_response.set_status(405)
+                                    break
+                                else:
+                                    pin_type = HWConf[INDEX_OPERAND_TYPE]
+                                    if pin_type == operand_type:
+                                        pin = HWConf[INDEX_GPIO]
+                                        if pin_type == DIGITAL_OPERAND_TYPE:
+                                            # TODO Perform Digital Operation
+                                            print operation, pin
+                                            operate_gpio_digital(pin, operation)
+                                            iotp_response.set_status(200)
+                                            pass
+                                        elif pin_type == ANALOG_OPERAND_TYPE:
+                                            # TODO Perform Analog Operation
+                                            operate_gpio_analog(pin, operation)
+                                            iotp_response.set_status(200)
+                                            pass
                             except:
-                                status = (405, 'Operand not found')
+                                iotp_response.set_status(500)
                                 break
+                    # interrogation request
+                    elif iotp_request.get_trans_type_id() is IOTPTransactionData.RequestType.INTERROGATION:
+                        # process server data D 0001 0014 D
+                        # process server data D 0001 0014 C
+                        intr = IOTPTransactionTypeInterrogation(iotp_request)
+                        if intr.is_connection_check():
+                            iotp_response.set_status(200)
+                            pass
+                        elif intr.is_status_check():
+                            status = []
+                            for k in range(0, len(HARDWARE_CONF)):
+                                hw_c = HARDWARE_CONF[k]
+                                if hw_c is not None:
+                                    sts = get_gpio_status(hw_c[INDEX_GPIO])
+                                    status.append({
+                                        "id": hw_c[INDEX_OPERAND_ID],
+                                        "type": hw_c[INDEX_OPERAND_TYPE],
+                                        "state": sts
+                                    })
+                            iotp_response.set_status(200)
+                            iotp_response.set_message(status)
+                            pass
+                        pass
                 except:
                     pass
-                print "TX: {}\\n".format(status)
-                self.server_connection.sendall(str(status) + "\n")
+                print "TX: {}\\n".format(iotp_response.get_json())
+                self.server_connection.sendall(iotp_response.get_json() + "\n")
 
         return self.connection_ok
 
