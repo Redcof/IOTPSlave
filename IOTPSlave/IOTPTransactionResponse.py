@@ -13,10 +13,11 @@ class IOTPTransactionResponse:
         '503': 'Operand Unresponsive'
     }
 
-    def __init__(self, code):
+    def __init__(self, code, slave_id):
         self.__status_code = code
         self.__status_text = IOTPTransactionResponse.CODE_MATRIX[str(code)]
         self.__message = ""
+	self.__slave_id = slave_id
         pass
 
     def set_status(self, code):
@@ -30,5 +31,6 @@ class IOTPTransactionResponse:
         return json.dumps({
             'status_code': self.__status_code,
             'status_text': self.__status_text,
+            'id': self.__slave_id,
             'message': self.__message
         })

@@ -238,7 +238,7 @@ class IOTPSlave:
             # if data available
             if server_data is not "" and server_data is not None:
                 try:
-                    iotp_response = IOTPTransactionResponse(400)
+                    iotp_response = IOTPTransactionResponse(400, IOTP_SLAVE_CONF[KEY_SLAVE_ID])
                     iotp_request = IOTPTransactionData(server_data, IOTP_SLAVE_CONF[KEY_SLAVE_ID])
 
                     # command request
