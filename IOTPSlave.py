@@ -18,10 +18,10 @@ class IOTPSlave:
     KEY_AUTHOR = "author"
     KEY_DATE = "date"
 
-    DIGITAL_OPERAND = 0
-    ANALOG_OPERAND = 1
+    DIGITAL_OPERAND = 0xd
+    ANALOG_OPERAND = 0xa
 
-    DEFAULT_OPERAND = -1
+    DEFAULT_OPERAND = 0x0
 
     PIN_NONE = -1
 
@@ -44,6 +44,9 @@ class IOTPSlave:
         self.connection_ok = False
         self.status_code = 0
         self.conn = 0
+        self.digital_operand_list = ""
+        self.analog_operand_list = ""
+        self.conn_retry_sec = 1
         pass
 
     def validate_conf_file(self):
@@ -58,10 +61,10 @@ class IOTPSlave:
     def init_slave(self):
         KEY = 0
         VALUE = 1
-        don = 0
-        aon = 0
-        don_calculated = 0
-        aon_calculated = 0
+        doc = 0
+        aoc = 0
+        doc_calculated = 0
+        aoc_calculated = 0
 
         dir_path = os.path.dirname(os.path.realpath(__file__))
         file = open(dir_path + '/iotp.slaveconf')
@@ -84,18 +87,18 @@ class IOTPSlave:
                 self.status_code = 1  # mandatory key not found
                 break
 
-            don = int(self.IOTP_SLAVE_CONF[self.KEY_DIGITAL_OPERAND_COUNT])
-            aon = int(self.IOTP_SLAVE_CONF[self.KEY_ANALOG_OPERAND_COUNT])
+            doc = int(self.IOTP_SLAVE_CONF[self.KEY_DIGITAL_OPERAND_COUNT])
+            aoc = int(self.IOTP_SLAVE_CONF[self.KEY_ANALOG_OPERAND_COUNT])
 
-            if (don + aon) < 1:
+            if (doc + aoc) < 1:
                 self.status_code = 2  # no operand found
                 break
 
-            if (don + aon) > 8:
+            if (doc + aoc) > 8:
                 self.status_code = 3  # Maximum 8 operand can be configured
                 break
 
-            if aon > 2:
+            if aoc > 2:
                 self.status_code = 4  # 2 analog operand can be configured
                 break
 
@@ -105,7 +108,8 @@ class IOTPSlave:
                     v = self.IOTP_SLAVE_CONF[self.KEY_DIGITAL_OPERAND_PREFIX + str(k + 1)]
                     if v is not None:
                         self.HARDWARE_CONF[k] = (self.DIGITAL_OPERAND, int(v))
-                        don_calculated += 1
+                        doc_calculated += 1
+                        self.digital_operand_list += "d{},".format(k + 1)
                         continue
                 except:
                     pass
@@ -115,17 +119,20 @@ class IOTPSlave:
                     v = self.IOTP_SLAVE_CONF[self.KEY_ANALOG_OPERAND_PREFIX + str(k + 1)]
                     if v is not None:
                         self.HARDWARE_CONF[k] = (self.ANALOG_OPERAND, int(v))
-                        aon_calculated += 1
+                        aoc_calculated += 1
+                        self.analog_operand_list += "a{},".format(k + 1)
                         continue
                 except:
                     pass
 
-            if don is not don_calculated or aon is not aon_calculated:
+            if doc is not doc_calculated or aoc is not aoc_calculated:
                 self.status_code = 5  # number of operand and PIN configuration does not matched
                 break
 
             self.init_ok = True
             print "Configuration OK"
+            self.digital_operand_list = self.digital_operand_list.rstrip(",")
+            self.analog_operand_list = self.analog_operand_list.rstrip(",")
             break  # while loop
 
         if self.init_ok is not True:
@@ -136,28 +143,38 @@ class IOTPSlave:
             return
         ip = str(self.IOTP_SLAVE_CONF[self.KEY_HOST_IP])
         port = int(self.IOTP_SLAVE_CONF[self.KEY_PORT])
-        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        print "Connecting to server..."
-        sock.connect((ip, port))
 
-        try:
-            while True:
-                # byte://20/d/2/a/2
-                init_req = "byte://{}/d/{}/a/{}\n".format(self.IOTP_SLAVE_CONF[self.KEY_SLAVE_ID],
-                                                          self.IOTP_SLAVE_CONF[self.KEY_DIGITAL_OPERAND_COUNT],
-                                                          self.IOTP_SLAVE_CONF[self.KEY_ANALOG_OPERAND_COUNT])
-                sock.sendall(init_req)
-                print "TX: " + init_req
-                response = self.read_line(sock, True)
-                print "RX: {}".format(response)
-                if int(response) is not 200:
-                    self.connection_ok = True
-                    self.conn = sock
-                    print "Connection OK"
-                    break
-                time.sleep(1)
-        finally:
-            pass
+        print "Connecting to server..."
+        while True:
+            if self.connection_ok is True:
+                break
+            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            sock.connect((ip, port))
+            try:
+                while True:
+                    # byte://20/d:4[d1,d3,d4,d5]/a:2[a2,a6]
+                    init_req = "byte://{}/d:{}[{}]/a:{}[{}]\n".format(self.IOTP_SLAVE_CONF[self.KEY_SLAVE_ID],
+                                                                      self.IOTP_SLAVE_CONF[self.KEY_DIGITAL_OPERAND_COUNT],
+                                                                      self.digital_operand_list,
+                                                                      self.IOTP_SLAVE_CONF[self.KEY_ANALOG_OPERAND_COUNT],
+                                                                      self.analog_operand_list)
+                    sock.sendall(init_req)
+                    print "TX: " + init_req
+                    response = self.read_line(sock, True)
+                    print "RX: {}".format(response)
+                    try:
+                        if int(response) is 200:
+                            self.connection_ok = True
+                            self.conn = sock
+                            print "Connection OK"
+                            break
+                    except:
+                        break
+                    print "Failed."
+                    print "Retry in {} second(s)...".format(self.conn_retry_sec)
+                    time.sleep(self.conn_retry_sec)
+            finally:
+                pass
 
     # this function is a complete client implementation
     def communicate(self):
