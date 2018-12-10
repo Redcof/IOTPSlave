@@ -120,7 +120,6 @@ class IOTPSlave:
                 break
 
             for k in range(0, len(HARDWARE_CONF)):
-                print k
                 # check if digital operand
                 try:
                     gpio = IOTP_SLAVE_CONF[KEY_DIGITAL_OPERAND_PREFIX + str(k + 1)]
@@ -151,7 +150,9 @@ class IOTPSlave:
             self.analog_operand_list = self.analog_operand_list.rstrip(",")
 
             # configure GPIO for HW operations
-            init_gpio(HARDWARE_CONF)
+            init_gpio(HARDWARE_CONF, INDEX_GPIO)
+            
+            print HARDWARE_CONF
 
             self.init_ok = True
             print "Configuration OK"
@@ -246,7 +247,7 @@ class IOTPSlave:
                         r = IOTPTransactionTypeCommand(iotp_request)
                         while r.has_next():
                             inf = r.next_operand_info()
-                            # print inf
+                            print 'operate: ', inf
                             operand_type = inf[INDEX_OPERAND_TYPE]
                             operand_id = inf[INDEX_OPERAND_ID]
                             operation = inf[INDEX_OPERATION]
@@ -260,7 +261,7 @@ class IOTPSlave:
                                         HWConf = hw_c
                                         break
 
-                                # print HWConf
+                                print HWConf
                                 if HWConf is None:
                                     iotp_response.set_status(405)
                                     break
@@ -279,8 +280,10 @@ class IOTPSlave:
                                             operate_gpio_analog(pin, operation)
                                             iotp_response.set_status(200)
                                             pass
-                            except:
+                            except RuntimeError, e:
+                                print e
                                 iotp_response.set_status(500)
+                                iotp_response.set_message(e.message)
                                 break
                     # interrogation request
                     elif iotp_request.get_trans_type_id() is IOTPTransactionData.RequestType.INTERROGATION:

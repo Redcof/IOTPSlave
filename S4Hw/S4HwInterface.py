@@ -9,14 +9,14 @@ _date_ = "2019-09-26"
 # Reference https://sourceforge.net/p/raspberry-gpio-python/wiki/Home/
 
 # init GPIO pins
-def init_gpio(hw_conf):
+def init_gpio(hw_conf, pin_index):
     # prepare HW GPIO
     GPIO.setmode(GPIO.BCM)
     GPIO.setwarnings(False)
     for k in range(0, len(hw_conf)):
         pin = hw_conf[k]
         if pin is not None:
-            GPIO.setup(pin[1], GPIO.OUT)
+            GPIO.setup(pin[pin_index], GPIO.OUT)
 
 
 # operate GPIO pins in DIGITAL

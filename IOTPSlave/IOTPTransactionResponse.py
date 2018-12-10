@@ -27,4 +27,8 @@ class IOTPTransactionResponse:
         self.__message = message
 
     def get_json(self):
-        return json.load(self)
+        return json.dumps({
+            'status_code': self.__status_code,
+            'status_text': self.__status_text,
+            'message': self.__message
+        })
