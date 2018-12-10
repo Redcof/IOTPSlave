@@ -4,17 +4,18 @@ author  = int_soumen
 date    = 02-08-2018
 
 # Slave configuration
-host    = 192.168.0.100
+host    = 192.168.0.101
 port    = 10700
-usid      = 21 # Unique = ID
+usid    = 21      # Unique = ID
+name    = Kitchen # Name of the slave
 
 # slave hardware configuration
 don     = 4  # Numbers of digital operands
 aon     = 0  # Numbers of analog operand
 
 # order digital and analog HW PINS back to back
-d1      = 8  # HW PIN 8
-d2      = 10 # HW PIN 10
+d1      = 18   # HW PIN 18
+d2      = 10  # HW PIN 10
 d3      = 12  # HW PIN 12
 d4      = 16  # HW PIN 16
 

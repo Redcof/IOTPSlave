@@ -2,6 +2,8 @@ import socket
 import time
 import os
 
+import regex as regex
+
 from IOTPTransactionData import IOTPTransactionData
 from IOTPTransactionTypeCommand import IOTPTransactionTypeCommand
 from S4Timer.S4Timer import S4Timer
@@ -54,7 +56,7 @@ class IOTPSlave:
         self.digital_operand_list = ""
         self.analog_operand_list = ""
         self.conn_retry_sec = 5
-        self.server_offline_detection_timer = S4Timer(3, self.server_offline_detected, self)
+        self.server_offline_detection_timer = S4Timer(3, self.server_offline_detected)
         self.server_offline_detection = False
         pass
 
@@ -79,10 +81,10 @@ class IOTPSlave:
         aoc_calculated = 0
 
         dir_path = self.slave_home
-        file = open(dir_path + '/iotp.slaveconf')
+        c_file = open(dir_path + '/iotp.slaveconf')
 
         # load the configuration to memory
-        for line in file:
+        for line in c_file:
             # skip comments
             if line[0] is "#":
                 continue
@@ -194,12 +196,20 @@ class IOTPSlave:
             """ Read response """
             response = self.read_line()
             print "RX: {}".format(response)
+
+            res = regex.match(r"^\[(?P<status>[0-9]{3}),(?P<message>[A-z\s\d]+).*?\]$",
+                              str(response), regex.I | regex.M)
+            if res:
+                res = res.groupdict()
             try:
-                if int(response) is 200:
+                if int(res['status']) is 200:
                     self.handshake_done = True
                     print "Handshake OK."
-            except:
-                pass
+                else:
+                    print "Handshake Fail."
+            except RuntimeError, e:
+                print e
+
         finally:
             return self.connection_ok
 
@@ -218,39 +228,46 @@ class IOTPSlave:
             # if data available
             if server_data is not "":
                 # process server data C 0001 0014 1 D 2 0001
-                x = IOTPTransactionData(server_data, IOTP_SLAVE_CONF[KEY_SLAVE_ID])
-                status = 200
-                if x.get_trans_type_id() is IOTPTransactionData.RequestType.COMMAND:
-                    r = IOTPTransactionTypeCommand(x)
-                    while r.has_next():
-                        inf = r.next_operand_info()
-                        print inf
-                        operand_type = inf[0]
-                        operand_id = inf[1]
-                        operation = inf[2]
+                status = (300, 'Invalid request')
+                try:
+                    x = IOTPTransactionData(server_data, IOTP_SLAVE_CONF[KEY_SLAVE_ID])
+                    if x.get_trans_type_id() is IOTPTransactionData.RequestType.COMMAND:
+                        r = IOTPTransactionTypeCommand(x)
+                        while r.has_next():
+                            inf = r.next_operand_info()
+                            print inf
+                            operand_type = inf[0]
+                            operand_id = inf[1]
+                            operation = inf[2]
 
-                        status = 500
+                            status = (500, 'Slave error')
 
-                        try:
-                            """ Find PIN """
-                            HWConf = HARDWARE_CONF[operand_id]
-                            pin_type = HWConf[0]
-                            if pin_type == operand_type:
-                                pin = HWConf[1]
-                                if pin_type == DIGITAL_OPERAND:
-                                    # TODO Perform Digital Operation
-                                    status = 200
-                                    pass
-                                elif pin_type == ANALOG_OPERAND:
-                                    # TODO Perform Analog Operation
-                                    status = 200
-                                    pass
-                                else:
-                                    break
-                        except:
-                            status = 404
-                            break
-                            pass
+                            try:
+                                """ Find PIN """
+                                HWConf = HARDWARE_CONF[operand_id]
+                                pin_type = HWConf[0]
+                                if pin_type == operand_type:
+                                    pin = HWConf[1]
+                                    if pin_type == DIGITAL_OPERAND:
+                                        # TODO Perform Digital Operation
+                                        pin, operation
+                                        status = (200, 'OK')
+                                        pass
+                                    elif pin_type == ANALOG_OPERAND:
+                                        # TODO Perform Analog Operation
+                                        pin, operation
+                                        status = (200, 'OK')
+                                        pass
+                                    else:
+                                        status = (405, 'Operand not found')
+                                        break
+                            except:
+                                status = (405, 'Operand not found')
+                                break
+
+
+                except:
+                    pass
                 print "TX: {}\\n".format(status)
                 self.server_connection.sendall(str(status) + "\n")
 
@@ -262,8 +279,16 @@ class IOTPSlave:
         string = ""
         while self.connection_ok is True:
             try:
+                """ Read one 1Byte """
                 d = str(self.server_connection.recv(1))
                 if len(d) is 0:
+                    try:
+                        """ Trying with a blank CR to check connection """
+                        self.server_connection.sendall("\n")
+                    except:
+                        """ Server offline """
+                        self.server_offline_detected()
+                        break
                     if self.server_offline_detection is False:
                         self.server_offline_detection_timer.start_timer()
                         self.server_offline_detection = True
@@ -281,7 +306,8 @@ class IOTPSlave:
 
         return string
 
-    def server_offline_detected(self, o):
+    def server_offline_detected(self):
+        print "Server offline."
         self.server_connection = None
         self.connection_ok = False
         self.handshake_done = False
