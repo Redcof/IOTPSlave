@@ -1,7 +1,7 @@
 import socket
 import time
 import os
-
+import RPi.GPIO as GPIO
 import regex as regex
 
 from IOTPTransactionData import IOTPTransactionData
@@ -29,16 +29,16 @@ DEFAULT_OPERAND = 0x0
 
 PIN_NONE = -1
 
-HARDWARE_CONF = {
-    0x0: None,
-    0x1: None,
-    0x2: None,
-    0x3: None,
-    0x4: None,
-    0x5: None,
-    0x6: None,
-    0x7: None,
-}
+HARDWARE_CONF = [
+    None,
+    None,
+    None,
+    None,
+    None,
+    None,
+    None,
+    None,
+]
 
 INDEX_OPERAND_TYPE = 0
 INDEX_OPERAND_PIN = 1
@@ -116,12 +116,13 @@ class IOTPSlave:
                 self.status_code = 4  # 2 analog operand can be configured
                 break
 
-            for k in HARDWARE_CONF:
+            for k in range(0, len(HARDWARE_CONF)):
+                print k
                 # check if digital operand
                 try:
                     v = IOTP_SLAVE_CONF[KEY_DIGITAL_OPERAND_PREFIX + str(k + 1)]
                     if v is not None:
-                        HARDWARE_CONF[k] = (DIGITAL_OPERAND, int(v))
+                        HARDWARE_CONF[k] = (DIGITAL_OPERAND, int(v), (k + 1))
                         doc_calculated += 1
                         self.digital_operand_list += "d{},".format(k + 1)
                         continue
@@ -132,7 +133,7 @@ class IOTPSlave:
                 try:
                     v = IOTP_SLAVE_CONF[KEY_ANALOG_OPERAND_PREFIX + str(k + 1)]
                     if v is not None:
-                        HARDWARE_CONF[k] = (ANALOG_OPERAND, int(v))
+                        HARDWARE_CONF[k] = (ANALOG_OPERAND, int(v), (k + 1))
                         aoc_calculated += 1
                         self.analog_operand_list += "a{},".format(k + 1)
                         continue
@@ -143,14 +144,28 @@ class IOTPSlave:
                 self.status_code = 5  # number of operand and PIN configuration does not matched
                 break
 
-            self.init_ok = True
-            print "Configuration OK"
             self.digital_operand_list = self.digital_operand_list.rstrip(",")
             self.analog_operand_list = self.analog_operand_list.rstrip(",")
+            
+            # prepare HW GPIO
+            GPIO.setmode(GPIO.BCM)
+            GPIO.setwarnings(False)
+            for k in range(0, len(HARDWARE_CONF)):
+                pin = HARDWARE_CONF[k]
+                if pin is None:
+                    print "-------"
+                    pass
+                else:
+                    GPIO.setup(pin[1], GPIO.OUT)
+                    print "+++++", pin
+            self.init_ok = True
+            print "Configuration OK"
             break  # while loop
 
         if self.init_ok is not True:
             print "Configuration filed"
+       
+            
 
     def init_connection(self):
         if self.init_ok is not True:
@@ -223,6 +238,7 @@ class IOTPSlave:
 
         while self.connection_ok is True and self.handshake_done is True:
             # read data from server
+            print 'Read command...'
             server_data = self.read_line()
             print "RX: {}".format(server_data)
             # if data available
@@ -244,28 +260,36 @@ class IOTPSlave:
 
                             try:
                                 """ Find PIN """
-                                HWConf = HARDWARE_CONF[operand_id]
+                                HWConf = None
+                                for k in range(0, len(HARDWARE_CONF)):
+                                    pin_c = HARDWARE_CONF[k]
+                                    if pin_c[2] is operand_id:
+                                        HWConf = pin_c
+                                        break
+                                    
+                                print HWConf
+                                
                                 pin_type = HWConf[0]
+                                
                                 if pin_type == operand_type:
                                     pin = HWConf[1]
                                     if pin_type == DIGITAL_OPERAND:
                                         # TODO Perform Digital Operation
-                                        pin, operation
+                                        print operation, pin
+                                        if operation is 1:
+                                            GPIO.output(pin,GPIO.HIGH)
+                                        if operation is 0:
+                                            GPIO.output(pin,GPIO.LOW)
                                         status = (200, 'OK')
                                         pass
                                     elif pin_type == ANALOG_OPERAND:
                                         # TODO Perform Analog Operation
-                                        pin, operation
+                                        pin
                                         status = (200, 'OK')
                                         pass
-                                    else:
-                                        status = (405, 'Operand not found')
-                                        break
                             except:
                                 status = (405, 'Operand not found')
                                 break
-
-
                 except:
                     pass
                 print "TX: {}\\n".format(status)

@@ -10,12 +10,12 @@ usid    = 21      # Unique = ID
 name    = Kitchen # Name of the slave
 
 # slave hardware configuration
-don     = 4  # Numbers of digital operands
+don     = 1  # Numbers of digital operands
 aon     = 0  # Numbers of analog operand
 
 # order digital and analog HW PINS back to back
-d1      = 18   # HW PIN 18
-d2      = 10  # HW PIN 10
-d3      = 12  # HW PIN 12
-d4      = 16  # HW PIN 16
+d1      = 15  # HW PIN 10 GPIO 15
+# d2      = 18  # HW PIN 12 GPIO 18
+# d3      = 12  # HW PIN 12
+# d4      = 16  # HW PIN 16
 
