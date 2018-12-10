@@ -7,12 +7,12 @@ _date_ = "02-08-2018"
 
 
 class IOTPSlave:
-    IOTP_SLAVECONF = {}
-    KEY_DIGITAL_OPERAND_COUNT = "digital"
-    KEY_ANALOG_OPERAND_COUNT = "analog"
+    IOTP_SLAVE_CONF = {}
+    KEY_DIGITAL_OPERAND_COUNT = "don"
+    KEY_ANALOG_OPERAND_COUNT = "aon"
     KEY_DIGITAL_OPERAND_PREFIX = "d"
     KEY_ANALOG_OPERAND_PREFIX = "a"
-    KEY_SLAVE_ID = "id"
+    KEY_SLAVE_ID = "usid"
     KEY_HOST_IP = "host"
     KEY_PORT = "port"
     KEY_AUTHOR = "author"
@@ -40,16 +40,34 @@ class IOTPSlave:
     INDEX_OPERAND_PIN = 1
 
     def __init__(self):
+        self.init_ok = False
+        self.connection_ok = False
+        self.status_code = 0
+        self.conn = 0
         pass
+
+    def validate_conf_file(self):
+        key_map = (self.KEY_HOST_IP, self.KEY_SLAVE_ID,
+                   self.KEY_PORT, self.KEY_ANALOG_OPERAND_COUNT,
+                   self.KEY_DIGITAL_OPERAND_COUNT)
+        for k in key_map:
+            if k not in self.IOTP_SLAVE_CONF:
+                return False
+        return True
 
     def init_slave(self):
         KEY = 0
         VALUE = 1
+        don = 0
+        aon = 0
+        don_calculated = 0
+        aon_calculated = 0
 
         dir_path = os.path.dirname(os.path.realpath(__file__))
-        f = open(dir_path + '/iotp.slaveconf')
+        file = open(dir_path + '/iotp.slaveconf')
+
         # load the configuration to memory
-        for line in f:
+        for line in file:
             # skip comments
             if line[0] is "#":
                 continue
@@ -58,55 +76,103 @@ class IOTPSlave:
                 # Skip comments inside values
                 key = components[KEY].strip(" ").rstrip("\n")
                 value = components[VALUE].split("#", 1)[0].strip(" ").rstrip("\n")
-                self.IOTP_SLAVECONF[key] = value
+                self.IOTP_SLAVE_CONF[key] = value
 
-        # configure the hardware conf
-        for k in self.HARDWARE_CONF:
-            # check if digital operand
-            try:
-                v = self.IOTP_SLAVECONF[self.KEY_DIGITAL_OPERAND_PREFIX + str(k + 1)]
-                if v is not None:
-                    self.HARDWARE_CONF[k] = (self.DIGITAL_OPERAND, int(v))
-                    continue
-            except:
-                pass
+        # validate configuration file
+        while True:
+            if self.validate_conf_file() is False:
+                self.status_code = 1  # mandatory key not found
+                break
 
-            # check if analog operand
-            try:
-                v = self.IOTP_SLAVECONF[self.KEY_ANALOG_OPERAND_PREFIX + str(k + 1)]
-                if v is not None:
-                    self.HARDWARE_CONF[k] = (self.ANALOG_OPERAND, int(v))
-                    continue
-            except:
-                pass
+            don = int(self.IOTP_SLAVE_CONF[self.KEY_DIGITAL_OPERAND_COUNT])
+            aon = int(self.IOTP_SLAVE_CONF[self.KEY_ANALOG_OPERAND_COUNT])
 
-        print self.HARDWARE_CONF
+            if (don + aon) < 1:
+                self.status_code = 2  # no operand found
+                break
 
-    # this function is a complete client implementation
-    def connect(self):
-        # hostname = socket.gethostname()
-        # IPAddr = socket.gethostbyname(hostname)
-        ip = str(self.IOTP_SLAVECONF[self.KEY_HOST_IP])
-        port = int(self.IOTP_SLAVECONF[self.KEY_PORT])
+            if (don + aon) > 8:
+                self.status_code = 3  # Maximum 8 operand can be configured
+                break
+
+            if aon > 2:
+                self.status_code = 4  # 2 analog operand can be configured
+                break
+
+            for k in self.HARDWARE_CONF:
+                # check if digital operand
+                try:
+                    v = self.IOTP_SLAVE_CONF[self.KEY_DIGITAL_OPERAND_PREFIX + str(k + 1)]
+                    if v is not None:
+                        self.HARDWARE_CONF[k] = (self.DIGITAL_OPERAND, int(v))
+                        don_calculated += 1
+                        continue
+                except:
+                    pass
+
+                # check if analog operand
+                try:
+                    v = self.IOTP_SLAVE_CONF[self.KEY_ANALOG_OPERAND_PREFIX + str(k + 1)]
+                    if v is not None:
+                        self.HARDWARE_CONF[k] = (self.ANALOG_OPERAND, int(v))
+                        aon_calculated += 1
+                        continue
+                except:
+                    pass
+
+            if don is not don_calculated or aon is not aon_calculated:
+                self.status_code = 5  # number of operand and PIN configuration does not matched
+                break
+
+            self.init_ok = True
+            print "Configuration OK"
+            break  # while loop
+
+        if self.init_ok is not True:
+            print "Configuration filed"
+
+    def init_connection(self):
+        if self.init_ok is not True:
+            return
+        ip = str(self.IOTP_SLAVE_CONF[self.KEY_HOST_IP])
+        port = int(self.IOTP_SLAVE_CONF[self.KEY_PORT])
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        print "Connecting to server..."
         sock.connect((ip, port))
+
         try:
-            # sock.sendall(message + "\n")
-            #  initiate connection
             while True:
                 # byte://20/d/2/a/2
-                msg = "byte://{}/d/{}/a/{}\n".format(self.IOTP_SLAVECONF[self.KEY_SLAVE_ID],
-                                                     self.IOTP_SLAVECONF[self.KEY_DIGITAL_OPERAND_COUNT],
-                                                     self.IOTP_SLAVECONF[self.KEY_ANALOG_OPERAND_COUNT])
-                sock.sendall(msg)
-                print "TX: " + msg
-                response = self.read_line(sock)
+                init_req = "byte://{}/d/{}/a/{}\n".format(self.IOTP_SLAVE_CONF[self.KEY_SLAVE_ID],
+                                                          self.IOTP_SLAVE_CONF[self.KEY_DIGITAL_OPERAND_COUNT],
+                                                          self.IOTP_SLAVE_CONF[self.KEY_ANALOG_OPERAND_COUNT])
+                sock.sendall(init_req)
+                print "TX: " + init_req
+                response = self.read_line(sock, True)
                 print "RX: {}".format(response)
+                if int(response) is not 200:
+                    self.connection_ok = True
+                    self.conn = sock
+                    print "Connection OK"
+                    break
                 time.sleep(1)
         finally:
-            sock.close()
+            pass
 
-    def read_line(self, conn):
+    # this function is a complete client implementation
+    def communicate(self):
+        if self.connection_ok is not True:
+            return
+
+        print "Communicating..."
+
+        while True:
+            response = self.read_line(self.conn)
+            print "RX: {}".format(response)
+            time.sleep(.2)
+            self.conn.sendall("")
+
+    def read_line(self, conn, blocking=False):
         string = ""
         while True:
             try:

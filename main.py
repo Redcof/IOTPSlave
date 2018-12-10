@@ -10,4 +10,5 @@ _date_ = "02-08-2018"
 
 slave = IOTPSlave()
 slave.init_slave()
-slave.connect()
+slave.init_connection()
+slave.communicate()
