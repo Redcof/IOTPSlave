@@ -1,3 +1,4 @@
+import os
 import socket
 import time
 import re as regex
@@ -6,8 +7,13 @@ from IOTPTransactionResponse import IOTPTransactionResponse
 from IOTPTransactionTypeInterrogation import IOTPTransactionTypeInterrogation
 from IOTPTransactionData import IOTPTransactionData
 from IOTPTransactionTypeCommand import IOTPTransactionTypeCommand
-from S4Hw.S4HwInterface import init_gpio, operate_gpio_digital, operate_gpio_analog, get_gpio_status
 from S4Timer.S4Timer import S4Timer
+
+if os.path.exists("/home/pi"):
+    from S4Hw.S4HwInterface import init_gpio, operate_gpio_digital, operate_gpio_analog, get_gpio_status
+
+else:
+    from S4Hw.dev_S4HwInterface import init_gpio, operate_gpio_digital, operate_gpio_analog, get_gpio_status
 
 _author_ = "int_soumen"
 _date_ = "02-08-2018"
@@ -151,8 +157,10 @@ class IOTPSlave:
 
             # configure GPIO for HW operations
             init_gpio(HARDWARE_CONF, INDEX_GPIO)
-            
+            init_gpio([[3, 3, 3], [3, 3, 3]], 0)
+
             print HARDWARE_CONF
+            print IOTP_SLAVE_CONF
 
             self.init_ok = True
             print "Configuration OK"
@@ -173,7 +181,7 @@ class IOTPSlave:
         self.server_offline_detection = False
 
         print "Connecting to server..."
-
+        operate_gpio_digital(3, 1)
         while True:
             if self.connection_ok is True:
                 break
@@ -187,7 +195,19 @@ class IOTPSlave:
             except:
                 self.server_connection = None
                 print "Retry in " + str(self.conn_retry_sec) + " sec..."
-                time.sleep(self.conn_retry_sec)
+                operate_gpio_digital(3, 0)
+                time.sleep(.3)
+                operate_gpio_digital(3, 1)
+                time.sleep(.3)
+                operate_gpio_digital(3, 0)
+                time.sleep(.3)
+                operate_gpio_digital(3, 1)
+                time.sleep(.3)
+                operate_gpio_digital(3, 0)
+                time.sleep(.3)
+                operate_gpio_digital(3, 1)
+                time.sleep(.3)
+                time.sleep(self.conn_retry_sec - 1)
                 print "Connecting..."
 
         print "Server Found."
@@ -229,7 +249,7 @@ class IOTPSlave:
             return self.connection_ok
 
         print "Start Communication..."
-
+        operate_gpio_digital(3, 0)
         while self.connection_ok is True and self.handshake_done is True:
             # read data from server
             print 'Read command...'
@@ -270,6 +290,12 @@ class IOTPSlave:
                                     if pin_type == operand_type:
                                         pin = HWConf[INDEX_GPIO]
                                         if pin_type == DIGITAL_OPERAND_TYPE:
+                                            # Change the operation value as the relays are active low
+                                            if operation is 0:
+                                                operation = 1
+                                            else:
+                                                operation = 0
+
                                             # TODO Perform Digital Operation
                                             print operation, pin
                                             operate_gpio_digital(pin, operation)
@@ -299,6 +325,10 @@ class IOTPSlave:
                                 hw_c = HARDWARE_CONF[k]
                                 if hw_c is not None:
                                     sts = get_gpio_status(hw_c[INDEX_GPIO])
+                                    if sts is 0:
+                                        sts = 1
+                                    else:
+                                        sts = 0
                                     status.append({
                                         "id": hw_c[INDEX_OPERAND_ID],
                                         "type": hw_c[INDEX_OPERAND_TYPE],

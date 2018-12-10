@@ -17,6 +17,7 @@ def init_gpio(hw_conf, pin_index):
         pin = hw_conf[k]
         if pin is not None:
             GPIO.setup(pin[pin_index], GPIO.OUT)
+            GPIO.output(pin[pin_index], GPIO.HIGH)
 
 
 # operate GPIO pins in DIGITAL

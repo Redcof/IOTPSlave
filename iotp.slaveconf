@@ -4,7 +4,7 @@ author  = int_soumen
 date    = 02-08-2018
 
 # Slave configuration
-host    = 192.168.0.101
+host    = 192.168.0.102
 port    = 10700
 usid    = 21      # Unique = ID
 name    = Kitchen # Name of the slave
