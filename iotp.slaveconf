@@ -3,20 +3,18 @@
 author  = int_soumen
 date    = 02-08-2018
 
-# slave configuration
-host    = 192.168.0.108
+# Slave configuration
+host    = 192.168.0.100
 port    = 10700
 usid      = 21 # Unique = ID
 
 # slave hardware configuration
 don     = 4  # Numbers of digital operands
-aon     = 2  # Numbers of analog operand
+aon     = 0  # Numbers of analog operand
 
 # order digital and analog HW PINS back to back
-d1      = 2  # HW PIN 2
-a2      = 16 # HW PIN 16
-d3      = 3  # HW PIN 3
-d4      = 5  # HW PIN 5
-d5      = 6  # HW PIN 6
-a6      = 15 # HW PIN 15
+d1      = 8  # HW PIN 8
+d2      = 10 # HW PIN 10
+d3      = 12  # HW PIN 12
+d4      = 16  # HW PIN 16
 

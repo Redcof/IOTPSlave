@@ -4,6 +4,7 @@ import os
 
 from IOTPTransactionData import IOTPTransactionData
 from IOTPTransactionTypeCommand import IOTPTransactionTypeCommand
+from S4Timer import S4Timer
 
 _author_ = "int_soumen"
 _date_ = "02-08-2018"
@@ -46,14 +47,18 @@ class IOTPSlave:
     def __init__(self):
         self.init_ok = False
         self.connection_ok = False
+        self.handshake_done = False
         self.status_code = 0
-        self.conn = 0
+        self.server_connection = None
         self.digital_operand_list = ""
         self.analog_operand_list = ""
-        self.conn_retry_sec = 1
+        self.conn_retry_sec = 5
+        self.server_offline_detection_timer = S4Timer(3, self.server_offline_detected, self)
+        self.server_offline_detection = False
         pass
 
-    def validate_conf_file(self):
+    @staticmethod
+    def validate_conf_file():
         key_map = (KEY_HOST_IP, KEY_SLAVE_ID,
                    KEY_PORT, KEY_ANALOG_OPERAND_COUNT,
                    KEY_DIGITAL_OPERAND_COUNT)
@@ -61,6 +66,8 @@ class IOTPSlave:
             if k not in IOTP_SLAVE_CONF:
                 return False
         return True
+
+    """ Load Configuration file """
 
     def init_slave(self):
         KEY = 0
@@ -144,53 +151,70 @@ class IOTPSlave:
 
     def init_connection(self):
         if self.init_ok is not True:
-            return
+            return self.connection_ok
+
+        """ Reset all parameters """
         ip = str(IOTP_SLAVE_CONF[KEY_HOST_IP])
         port = int(IOTP_SLAVE_CONF[KEY_PORT])
 
+        self.server_offline_detection_timer.stop_timer()
+        self.server_offline_detection = False
+
         print "Connecting to server..."
+
         while True:
             if self.connection_ok is True:
                 break
-            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            sock.connect((ip, port))
             try:
-                while True:
-                    # byte://20/d:4[d1,d3,d4,d5]/a:2[a2,a6]
-                    init_req = "byte://{}/d:{}[{}]/a:{}[{}]\n".format(IOTP_SLAVE_CONF[KEY_SLAVE_ID],
-                                                                      IOTP_SLAVE_CONF[KEY_DIGITAL_OPERAND_COUNT],
-                                                                      self.digital_operand_list,
-                                                                      IOTP_SLAVE_CONF[KEY_ANALOG_OPERAND_COUNT],
-                                                                      self.analog_operand_list)
-                    sock.sendall(init_req)
-                    print "TX: " + init_req
-                    response = self.read_line(sock, True)
-                    print "RX: {}".format(response)
-                    try:
-                        if int(response) is 200:
-                            self.connection_ok = True
-                            self.conn = sock
-                            print "Connection OK"
-                            break
-                    except:
-                        break
-                    print "Failed."
-                    print "Retry in {} second(s)...".format(self.conn_retry_sec)
-                    time.sleep(self.conn_retry_sec)
-            finally:
-                pass
+                """ Connecting to server """
+                self.server_connection = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                self.server_connection.setblocking(True)
+                self.server_connection.connect((ip, port))
+                self.connection_ok = True
+                break
+            except:
+                self.server_connection = None
+                print "Retry in " + str(self.conn_retry_sec) + " sec..."
+                time.sleep(self.conn_retry_sec)
+                print "Connecting..."
 
-    # this function is a complete client implementation
+        print "Server Found."
+
+        try:
+            """ Send Connection Handshake """
+            # byte://20/d:4[d1,d3,d4,d5]/a:2[a2,a6]
+            init_req = "byte://{}/d:{}[{}]/a:{}[{}]\n".format(IOTP_SLAVE_CONF[KEY_SLAVE_ID],
+                                                              IOTP_SLAVE_CONF[KEY_DIGITAL_OPERAND_COUNT],
+                                                              self.digital_operand_list,
+                                                              IOTP_SLAVE_CONF[KEY_ANALOG_OPERAND_COUNT],
+                                                              self.analog_operand_list)
+            self.server_connection.sendall(init_req)
+            print "TX: " + init_req
+            """ Read response """
+            response = self.read_line()
+            print "RX: {}".format(response)
+            try:
+                if int(response) is 200:
+                    self.handshake_done = True
+                    print "Handshake OK."
+            except:
+                pass
+        finally:
+            return self.connection_ok
+
+    """ Communicate with IOTP Server """
+
     def communicate(self):
         if self.connection_ok is not True:
-            return
+            return self.connection_ok
 
-        print "Communicating..."
+        print "Start Communication..."
 
-        while True:
-            server_data = self.read_line(self.conn)
+        while self.connection_ok is True and self.handshake_done is True:
+            # read data from server
+            server_data = self.read_line()
             print "RX: {}".format(server_data)
-            time.sleep(.2)
+            # if data available
             if server_data is not "":
                 # process server data C000200151D10001
                 x = IOTPTransactionData(server_data, IOTP_SLAVE_CONF[KEY_SLAVE_ID])
@@ -198,22 +222,41 @@ class IOTPSlave:
                     r = IOTPTransactionTypeCommand(x)
                     while r.has_next():
                         inf = r.next_operand_info()
+                        # TODO Process the command
                         print inf
 
                 print "TX: 200\\n"
-                self.conn.sendall("200\n")
+                self.server_connection.sendall("200\n")
 
-    def read_line(self, conn, blocking=False):
-        if not isinstance(conn, socket.socket):
+        return self.connection_ok
+
+    def read_line(self):
+        if not isinstance(self.server_connection, socket.socket):
             raise Exception("Socket instance is required.")
         string = ""
-        while True:
+        while self.connection_ok is True:
             try:
-                d = str(conn.recv(1))
+                d = str(self.server_connection.recv(1))
+                if len(d) is 0:
+                    if self.server_offline_detection is False:
+                        self.server_offline_detection_timer.start_timer()
+                        self.server_offline_detection = True
+                    continue
+
+                self.server_offline_detection_timer.stop_timer()
+                self.server_offline_detection = False
+
                 if d == "\n" or d == "\r":
                     break
                 string += d
                 continue
             except:
-                break
+                pass
+
         return string
+
+    def server_offline_detected(self, o):
+        self.server_connection = None
+        self.connection_ok = False
+        self.handshake_done = False
+        pass
