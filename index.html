@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+    <style>
+        .on {
+            background-color: #00cd00;
+            color: #ffffff;
+        }
+
+        .off {
+            background-color: #e5e5e5;
+        }
+
+        li {
+            list-style-type: none;
+            font-family: monospace;
+            display: inline-block;
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            line-height: 50px;
+            text-align: center;
+            font-size: x-large;
+            margin: 5px;
+        }
+    </style>
+</head>
+<body>
+<input type="file" placeholder="status file json" id="file"
+       value="operator-status.json"/>
+<div class="gpio-status"></div>
+<script>
+    setInterval(function () {
+
+        startRead();
+
+    }, 100);
+
+    function startRead() {
+        // obtain input element through DOM
+
+        var file = document.getElementById('file').files[0];
+        if (file) {
+            getAsText(file);
+        }
+    }
+
+    function getAsText(readFile) {
+
+        var reader = new FileReader();
+
+        // Read file into memory as UTF-16
+        reader.readAsText(readFile);
+
+        // Handle progress, success, and errors
+        reader.onprogress = updateProgress;
+        reader.onload = loaded;
+        reader.onerror = errorHandler;
+    }
+
+    function updateProgress(evt) {
+        if (evt.lengthComputable) {
+            // evt.loaded and evt.total are ProgressEvent properties
+            var loaded = (evt.loaded / evt.total);
+            if (loaded < 1) {
+                // Increase the prog bar length
+                // style.width = (loaded * 200) + "px";
+            }
+        }
+    }
+
+    function loaded(evt) {
+        // Obtain the read file data
+        var fileString = evt.target.result;
+        update_ui(JSON.parse(fileString));
+    }
+
+    function errorHandler(evt) {
+        if (evt.target.error.name === "NotReadableError") {
+            // The file could not be read
+        }
+    }
+
+    function update_ui(json) {
+        var keys = Object.keys(json);
+        var len = keys.length;
+        var string = "<ul>", _class;
+        for (var ctr = 0; ctr < len; ctr++) {
+            var info = json[keys[ctr]];
+            if (parseFloat(info[1]) === 0) {
+                _class = "off";
+            } else {
+                _class = "on";
+            }
+            string += "<li class='" + _class + "'>" + keys[ctr] + "</li>";
+        }
+        string += "<ul>";
+
+        document.querySelectorAll('.gpio-status')[0].innerHTML = string
+    }
+</script>
+</body>
+</html>

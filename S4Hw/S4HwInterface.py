@@ -1,23 +1,30 @@
 import RPi.GPIO as GPIO
-import subprocess
 
 _author_ = "int_soumen"
 _date_ = "2019-09-26"
 
-
 # Reference http://wiringpi.com/the-gpio-utility/
 # Reference https://sourceforge.net/p/raspberry-gpio-python/wiki/Home/
 
+_INIT_DONE = False
+
+
 # init GPIO pins
-def init_gpio(hw_conf, pin_index):
+def init_gpio(gpio, mode='O', default=0):
+    global _INIT_DONE
     # prepare HW GPIO
-    GPIO.setmode(GPIO.BCM)
-    GPIO.setwarnings(False)
-    for k in range(0, len(hw_conf)):
-        pin = hw_conf[k]
-        if pin is not None:
-            GPIO.setup(pin[pin_index], GPIO.OUT)
-            GPIO.output(pin[pin_index], GPIO.HIGH)
+    if _INIT_DONE is False:
+        GPIO.setmode(GPIO.BCM)
+        GPIO.setwarnings(True)
+        _INIT_DONE = True
+    if mode is 'O':
+        GPIO.setup(gpio, GPIO.OUT)
+        if default is 0:
+            GPIO.output(gpio, GPIO.HIGH)
+        if default is 1:
+            GPIO.output(gpio, GPIO.LOW)
+    if mode is 'I':
+        GPIO.setup(gpio, GPIO.IN)
 
 
 # operate GPIO pins in DIGITAL

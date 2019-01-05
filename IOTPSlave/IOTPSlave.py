@@ -1,13 +1,16 @@
 import os
 import socket
+import threading
 import time
 import re as regex
+from thread import start_new_thread
 
 from IOTPTransactionResponse import IOTPTransactionResponse
 from IOTPTransactionTypeInterrogation import IOTPTransactionTypeInterrogation
 from IOTPTransactionData import IOTPTransactionData
 from IOTPTransactionTypeCommand import IOTPTransactionTypeCommand
-from S4Timer.S4Timer import S4Timer
+from IntsUtil.util import log
+# from S4Timer.S4Timer import S4Timer
 
 if os.path.exists("/home/pi"):
     from S4Hw.S4HwInterface import init_gpio, operate_gpio_digital, operate_gpio_analog, get_gpio_status
@@ -17,6 +20,9 @@ else:
 
 _author_ = "int_soumen"
 _date_ = "02-08-2018"
+_date_mod_ = "04-Jan-2019"
+
+SLEEP_WAIT = 5
 
 IOTP_SLAVE_CONF = {}
 KEY_DIGITAL_OPERAND_COUNT = "don"
@@ -25,6 +31,7 @@ KEY_DIGITAL_OPERAND_PREFIX = "d"
 KEY_ANALOG_OPERAND_PREFIX = "a"
 KEY_SLAVE_ID = "usid"
 KEY_HOST_IP = "host"
+KEY_HOST_PORT = "host_port"
 KEY_PORT = "port"
 KEY_AUTHOR = "author"
 KEY_DATE = "date"
@@ -58,21 +65,27 @@ class IOTPSlave:
     def __init__(self, slave_home):
         self.init_ok = False
         self.slave_home = slave_home
-        self.connection_ok = False
+        self.connection_status = False
         self.handshake_done = False
         self.status_code = 0
-        self.server_connection = None
+        # self.server_sock = None
+        self.slave_server = None
         self.digital_operand_list = ""
         self.analog_operand_list = ""
         self.conn_retry_sec = 5
-        self.server_offline_detection_timer = S4Timer(3, self.server_offline_detected)
-        self.server_offline_detection = False
+        # self.server_offline_detection_timer = S4Timer(3, self.server_offline_detected)
+        # self.server_offline_detection = False
+        self.sts_blink = False
+        self.blink_pause = 0.3
+        # signal LED GPIO 3
+        init_gpio(3, 'O', 0)
+        operate_gpio_digital(3, 1)
         pass
 
     @staticmethod
     def validate_conf_file():
         key_map = (KEY_HOST_IP, KEY_SLAVE_ID,
-                   KEY_PORT, KEY_ANALOG_OPERAND_COUNT,
+                   KEY_HOST_PORT, KEY_PORT, KEY_ANALOG_OPERAND_COUNT,
                    KEY_DIGITAL_OPERAND_COUNT)
         for k in key_map:
             if k not in IOTP_SLAVE_CONF:
@@ -84,11 +97,11 @@ class IOTPSlave:
     def init_slave(self):
         KEY = 0
         VALUE = 1
-        doc = 0
-        aoc = 0
+        digital_operand_count = 0
+        analog_operand_count = 0
         doc_calculated = 0
         aoc_calculated = 0
-
+        log("IN CONFIG...")
         dir_path = self.slave_home
         c_file = open(dir_path + '/iotp.slaveconf')
 
@@ -110,18 +123,18 @@ class IOTPSlave:
                 self.status_code = 1  # mandatory key not found
                 break
 
-            doc = int(IOTP_SLAVE_CONF[KEY_DIGITAL_OPERAND_COUNT])
-            aoc = int(IOTP_SLAVE_CONF[KEY_ANALOG_OPERAND_COUNT])
+            digital_operand_count = int(IOTP_SLAVE_CONF[KEY_DIGITAL_OPERAND_COUNT])
+            analog_operand_count = int(IOTP_SLAVE_CONF[KEY_ANALOG_OPERAND_COUNT])
 
-            if (doc + aoc) < 1:
+            if (digital_operand_count + analog_operand_count) < 1:
                 self.status_code = 2  # no operand found
                 break
 
-            if (doc + aoc) > 8:
+            if (digital_operand_count + analog_operand_count) > 8:
                 self.status_code = 3  # Maximum 8 operand can be configured
                 break
 
-            if aoc > 2:
+            if analog_operand_count > 2:
                 self.status_code = 4  # 2 analog operand can be configured
                 break
 
@@ -134,7 +147,8 @@ class IOTPSlave:
                         doc_calculated += 1
                         self.digital_operand_list += "d{},".format(k + 1)
                         continue
-                except:
+                except Exception, e:
+                    log(e.message)
                     pass
 
                 # check if analog operand
@@ -145,10 +159,11 @@ class IOTPSlave:
                         aoc_calculated += 1
                         self.analog_operand_list += "a{},".format(k + 1)
                         continue
-                except:
+                except Exception, e:
+                    print e
                     pass
 
-            if doc is not doc_calculated or aoc is not aoc_calculated:
+            if digital_operand_count is not doc_calculated or analog_operand_count is not aoc_calculated:
                 self.status_code = 5  # number of operand and PIN configuration does not matched
                 break
 
@@ -156,61 +171,77 @@ class IOTPSlave:
             self.analog_operand_list = self.analog_operand_list.rstrip(",")
 
             # configure GPIO for HW operations
-            init_gpio(HARDWARE_CONF, INDEX_GPIO)
-            init_gpio([[3, 3, 3], [3, 3, 3]], 0)
+            for k in range(0, len(HARDWARE_CONF)):
+                pin = HARDWARE_CONF[k]
+                if pin is not None:
+                    init_gpio(pin[INDEX_GPIO], 'O', 0)
 
             print HARDWARE_CONF
             print IOTP_SLAVE_CONF
 
             self.init_ok = True
-            print "Configuration OK"
+            log("CONFIG OK.")
+            self.start_blinking()
             break  # while loop
 
         if self.init_ok is not True:
-            print "Configuration filed"
+            log("CONFIG FAILED.")
+            self.blink_pause = 1
+            self.start_blinking()
+
+    def start_blinking(self):
+        self.sts_blink = True
+        start_new_thread(self.blink, (1,))
+        pass
+
+    def stop_blinking(self, closing_value=0):
+        start_new_thread(self.blink, (closing_value,))
+        self.sts_blink = False
+        pass
+
+    def blink(self, closing_value):
+        while self.sts_blink is True:
+            print "blinking"
+            operate_gpio_digital(3, 0)
+            time.sleep(self.blink_pause)
+            print "blinking"
+            operate_gpio_digital(3, 1)
+            time.sleep(self.blink_pause)
+            print "blinking"
+            operate_gpio_digital(3, 0)
+            time.sleep(self.blink_pause)
+        operate_gpio_digital(3, closing_value)
+        print "blink end."
 
     def init_connection(self):
         if self.init_ok is not True:
-            return self.connection_ok
+            return False
 
-        """ Reset all parameters """
         ip = str(IOTP_SLAVE_CONF[KEY_HOST_IP])
-        port = int(IOTP_SLAVE_CONF[KEY_PORT])
+        port = int(IOTP_SLAVE_CONF[KEY_HOST_PORT])
 
-        self.server_offline_detection_timer.stop_timer()
-        self.server_offline_detection = False
+        # self.server_offline_detection_timer.stop_timer()
+        # self.server_offline_detection = False
 
-        print "Connecting to server..."
-        operate_gpio_digital(3, 1)
+        log("FINDING SERVER @{}...".format((ip, port)))
         while True:
-            if self.connection_ok is True:
-                break
+            # if self.connection_status is True:
+            #     break
             try:
-                """ Connecting to server """
-                self.server_connection = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-                self.server_connection.setblocking(True)
-                self.server_connection.connect((ip, port))
-                self.connection_ok = True
+                server_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                server_sock.setblocking(True)
+                server_sock.connect((ip, port))
+                self.connection_status = True
                 break
-            except:
-                self.server_connection = None
-                print "Retry in " + str(self.conn_retry_sec) + " sec..."
-                operate_gpio_digital(3, 0)
-                time.sleep(.3)
-                operate_gpio_digital(3, 1)
-                time.sleep(.3)
-                operate_gpio_digital(3, 0)
-                time.sleep(.3)
-                operate_gpio_digital(3, 1)
-                time.sleep(.3)
-                operate_gpio_digital(3, 0)
-                time.sleep(.3)
-                operate_gpio_digital(3, 1)
-                time.sleep(.3)
+            except Exception, e:
+                print e
+                self.connection_status = False
+                log("RETRY...")
                 time.sleep(self.conn_retry_sec - 1)
-                print "Connecting..."
 
-        print "Server Found."
+        log("CONNECTED.OK.")
+        # stop blinking
+        self.stop_blinking()
 
         try:
             """ Send Connection Handshake """
@@ -220,11 +251,11 @@ class IOTPSlave:
                                                               self.digital_operand_list,
                                                               IOTP_SLAVE_CONF[KEY_ANALOG_OPERAND_COUNT],
                                                               self.analog_operand_list)
-            self.server_connection.sendall(init_req)
-            print "TX: " + init_req
+            server_sock.sendall(init_req)
+            log("TX: >> " + init_req)
             """ Read response """
-            response = self.read_line()
-            print "RX: {}".format(response)
+            response = self._fn_read_line(server_sock)
+            log("RX: << {}".format(response))
 
             res = regex.match(r"^\[(?P<status>[0-9]{3}),(?P<message>[A-z\s\d]+).*?\]$",
                               str(response), regex.I | regex.M)
@@ -233,154 +264,251 @@ class IOTPSlave:
             try:
                 if int(res['status']) is 200:
                     self.handshake_done = True
-                    print "Handshake OK."
+                    log("HANDSHAKE.OK.")
                 else:
-                    print "Handshake Fail."
+                    self.handshake_done = False
+                    log("HANDSHAKE.FAIL.")
             except RuntimeError, e:
                 print e
-
+                self.connection_status = False
+                log(e.message)
         finally:
-            return self.connection_ok
+            threading.Timer(20.0, self.init_connection).start()
+            return self.connection_status
+
+    # def read_line(self):
+    #     if not isinstance(self.server_sock, socket.socket):
+    #         raise Exception("Socket instance is required.")
+    #     string = ""
+    #     while self.connection_ok is True:
+    #         try:
+    #             """ Read one 1Byte """
+    #             d = str(self.server_sock.recv(1))
+    #             if len(d) is 0:
+    #                 try:
+    #                     """ Trying with a blank CR to check connection """
+    #                     self.server_sock.sendall("\n")
+    #                 except Exception, e:
+    #                     print e
+    #                     """ Server offline """
+    #                     # self.server_offline_detected()
+    #                     break
+    #                 # if self.server_offline_detection is False:
+    #                 # self.server_offline_detection_timer.start_timer()
+    #                 # self.server_offline_detection = True
+    #                 continue
+    #
+    #             # self.server_offline_detection_timer.stop_timer()
+    #             # self.server_offline_detection = False
+    #
+    #             if d == "\n" or d == "\r":
+    #                 break
+    #             string += d
+    #             continue
+    #         except Exception, e:
+    #             print e
+    #             pass
+    #     return string
+
+    # def server_offline_detected(self):
+    #     print "Server offline."
+    #     self.server_sock = None
+    #     self.connection_ok = False
+    #     self.handshake_done = False
+    #     pass
+
+    """ NEW STATELESS SLAVE IMPL """
+
+    def start_server(self):
+        global SLEEP_WAIT
+        if self.connection_status is not True or self.handshake_done is not True:
+            return False
+
+        if self.slave_server is None:
+            self.start_blinking()
+            log("WAIT FOR ETH...")
+            # configure the socket for start the IOTP server
+            time.sleep(SLEEP_WAIT)
+            log("ETH OK.")
+
+            # bind socket with IP and PORT
+            try:
+                port = int(IOTP_SLAVE_CONF[KEY_PORT])
+                log("CREATING SERVER @ PORT{}...".format(port))
+                while True:
+                    try:
+                        self.slave_server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                        self.slave_server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+                        self.slave_server.bind(('', port))
+                        break
+                    except Exception, e:
+                        print e
+                        time.sleep(1)
+
+                        # start listing to the incoming connection
+                log('SERVER OK.RUNNING.')
+                self.stop_blinking()
+                self.s_listen()
+                return True
+            except Exception, e:
+                print e
+                log("PORT BLOCKED")
+                return False
+        else:
+            log("SOCKET FAIL.")
+            return False
+
+    def s_listen(self):
+        BACK_LOG = 1
+        # listen for new incoming connection
+        self.slave_server.listen(BACK_LOG)
+
+        while True:
+            log("WAIT FOR CMD...")
+            # accept a new connection
+            conn, addr = self.slave_server.accept()
+            log("RECEIVED")
+            # start a thread with client request
+
+            self.sts_blink = True
+            start_new_thread(self.blink, (0,))
+            self.sts_blink = False
+
+            start_new_thread(self.command_process, (conn, addr,))
+
+    def stop(self):
+        if self.slave_server is not None:
+            self.slave_server.close()
+            # self.server_sock = None
+            self.connection_status = False
+            self.handshake_done = False
+            operate_gpio_digital(3, 1)
 
     """ Communicate with IOTP Server """
 
-    def communicate(self):
-        if self.connection_ok is not True:
-            return self.connection_ok
+    @staticmethod
+    def _fn_communicate(in_server_conn, server_data):
+        # read data from server
+        print "RX: {}".format(server_data)
+        # if data available
+        if server_data is not "" and server_data is not None:
+            try:
+                iotp_response = IOTPTransactionResponse(400, IOTP_SLAVE_CONF[KEY_SLAVE_ID])
+                iotp_request = IOTPTransactionData(server_data, IOTP_SLAVE_CONF[KEY_SLAVE_ID])
 
-        print "Start Communication..."
-        operate_gpio_digital(3, 0)
-        while self.connection_ok is True and self.handshake_done is True:
-            # read data from server
-            print 'Read command...'
-            server_data = self.read_line()
-            print "RX: {}".format(server_data)
-            # if data available
-            if server_data is not "" and server_data is not None:
-                try:
-                    iotp_response = IOTPTransactionResponse(400, IOTP_SLAVE_CONF[KEY_SLAVE_ID])
-                    iotp_request = IOTPTransactionData(server_data, IOTP_SLAVE_CONF[KEY_SLAVE_ID])
+                # command request
+                if iotp_request.get_trans_type_id() is IOTPTransactionData.RequestType.COMMAND:
+                    # process server data C 0001 0014 1 D 2 0001
+                    r = IOTPTransactionTypeCommand(iotp_request)
+                    while r.has_next():
+                        inf = r.next_operand_info()
+                        print 'operate: ', inf
+                        operand_type = inf[INDEX_OPERAND_TYPE]
+                        operand_id = inf[INDEX_OPERAND_ID]
+                        operation = inf[INDEX_OPERATION]
 
-                    # command request
-                    if iotp_request.get_trans_type_id() is IOTPTransactionData.RequestType.COMMAND:
-                        # process server data C 0001 0014 1 D 2 0001
-                        r = IOTPTransactionTypeCommand(iotp_request)
-                        while r.has_next():
-                            inf = r.next_operand_info()
-                            print 'operate: ', inf
-                            operand_type = inf[INDEX_OPERAND_TYPE]
-                            operand_id = inf[INDEX_OPERAND_ID]
-                            operation = inf[INDEX_OPERATION]
-
-                            try:
-                                """ Search PIN """
-                                HWConf = None
-                                for k in range(0, len(HARDWARE_CONF)):
-                                    hw_c = HARDWARE_CONF[k]
-                                    if hw_c is not None and hw_c[INDEX_OPERAND_ID] is operand_id:
-                                        HWConf = hw_c
-                                        break
-
-                                print HWConf
-                                if HWConf is None:
-                                    iotp_response.set_status(405)
-                                    break
-                                else:
-                                    pin_type = HWConf[INDEX_OPERAND_TYPE]
-                                    if pin_type == operand_type:
-                                        pin = HWConf[INDEX_GPIO]
-                                        if pin_type == DIGITAL_OPERAND_TYPE:
-                                            # Change the operation value as the relays are active low
-                                            if operation is 0:
-                                                operation = 1
-                                            else:
-                                                operation = 0
-
-                                            # TODO Perform Digital Operation
-                                            print operation, pin
-                                            operate_gpio_digital(pin, operation)
-                                            iotp_response.set_status(200)
-                                            pass
-                                        elif pin_type == ANALOG_OPERAND_TYPE:
-                                            # TODO Perform Analog Operation
-                                            operate_gpio_analog(pin, operation)
-                                            iotp_response.set_status(200)
-                                            pass
-                            except RuntimeError, e:
-                                print e
-                                iotp_response.set_status(500)
-                                iotp_response.set_message(e.message)
-                                break
-                    # interrogation request
-                    elif iotp_request.get_trans_type_id() is IOTPTransactionData.RequestType.INTERROGATION:
-                        # process server data D 0001 0014 D
-                        # process server data D 0001 0014 C
-                        intr = IOTPTransactionTypeInterrogation(iotp_request)
-                        if intr.is_connection_check():
-                            iotp_response.set_status(200)
-                            pass
-                        elif intr.is_status_check():
-                            status = []
+                        try:
+                            """ Search PIN """
+                            HWConf = None
                             for k in range(0, len(HARDWARE_CONF)):
                                 hw_c = HARDWARE_CONF[k]
-                                if hw_c is not None:
-                                    sts = get_gpio_status(hw_c[INDEX_GPIO])
-                                    if sts is 0:
-                                        sts = 1
-                                    else:
-                                        sts = 0
-                                    status.append({
-                                        "id": hw_c[INDEX_OPERAND_ID],
-                                        "type": hw_c[INDEX_OPERAND_TYPE],
-                                        "state": sts
-                                    })
-                            iotp_response.set_status(200)
-                            iotp_response.set_message(status)
-                            pass
+                                if hw_c is not None and hw_c[INDEX_OPERAND_ID] is operand_id:
+                                    HWConf = hw_c
+                                    break
+
+                            print HWConf
+                            if HWConf is None:
+                                iotp_response.set_status(405)
+                                break
+                            else:
+                                pin_type = HWConf[INDEX_OPERAND_TYPE]
+                                if pin_type == operand_type:
+                                    pin = HWConf[INDEX_GPIO]
+                                    if pin_type == DIGITAL_OPERAND_TYPE:
+                                        # Change the operation value as the relays are active low
+                                        if operation is 0:
+                                            operation = 1
+                                        else:
+                                            operation = 0
+
+                                        # TODO Perform Digital Operation
+                                        print operation, pin
+                                        operate_gpio_digital(pin, operation)
+                                        iotp_response.set_status(200)
+                                        pass
+                                    elif pin_type == ANALOG_OPERAND_TYPE:
+                                        # TODO Perform Analog Operation
+                                        operate_gpio_analog(pin, operation)
+                                        iotp_response.set_status(200)
+                                        pass
+                        except RuntimeError, e:
+                            print e
+                            iotp_response.set_status(500)
+                            iotp_response.set_message(e.message)
+                            break
+                # interrogation request
+                elif iotp_request.get_trans_type_id() is IOTPTransactionData.RequestType.INTERROGATION:
+                    # process server data D 0001 0014 D
+                    # process server data D 0001 0014 C
+                    intr = IOTPTransactionTypeInterrogation(iotp_request)
+                    if intr.is_connection_check():
+                        iotp_response.set_status(200)
                         pass
-                except:
+                    elif intr.is_status_check():
+                        status = []
+                        for k in range(0, len(HARDWARE_CONF)):
+                            hw_c = HARDWARE_CONF[k]
+                            if hw_c is not None:
+                                sts = get_gpio_status(hw_c[INDEX_GPIO])
+                                if sts is 0:
+                                    sts = 1
+                                else:
+                                    sts = 0
+                                status.append({
+                                    "id": hw_c[INDEX_OPERAND_ID],
+                                    "type": hw_c[INDEX_OPERAND_TYPE],
+                                    "state": sts
+                                })
+                        iotp_response.set_status(200)
+                        iotp_response.set_message(status)
+                        pass
                     pass
                 print "TX: {}\\n".format(iotp_response.get_json())
-                self.server_connection.sendall(iotp_response.get_json() + "\n")
+                in_server_conn.sendall(iotp_response.get_json() + "\n")
+            except Exception, e:
+                print e
+                pass
 
-        return self.connection_ok
+    # handle client in a thread
+    def command_process(self, in_server_conn, addr):
+        # read client request line
+        cmd_data = self._fn_read_line(in_server_conn)
+        if cmd_data is None:
+            in_server_conn.close()
+            return
+        self._fn_communicate(in_server_conn, cmd_data)
+        return
+        pass
 
-    def read_line(self):
-        if not isinstance(self.server_connection, socket.socket):
-            raise Exception("Socket instance is required.")
+    @staticmethod
+    def _fn_read_line(conn):
         string = ""
-        while self.connection_ok is True:
+        while True:
             try:
-                """ Read one 1Byte """
-                d = str(self.server_connection.recv(1))
+                d = str(conn.recv(1))
                 if len(d) is 0:
                     try:
-                        """ Trying with a blank CR to check connection """
-                        self.server_connection.sendall("\n")
-                    except:
+                        """ Trying with a CR to check connection """
+                        conn.sendall("\n")
+                    except Exception, e:
                         """ Server offline """
-                        self.server_offline_detected()
+                        string = None
                         break
-                    if self.server_offline_detection is False:
-                        self.server_offline_detection_timer.start_timer()
-                        self.server_offline_detection = True
-                    continue
-
-                self.server_offline_detection_timer.stop_timer()
-                self.server_offline_detection = False
-
                 if d == "\n" or d == "\r":
                     break
                 string += d
                 continue
-            except:
-                pass
-
+            except Exception, e:
+                string = None
+                break
         return string
-
-    def server_offline_detected(self):
-        print "Server offline."
-        self.server_connection = None
-        self.connection_ok = False
-        self.handshake_done = False
-        pass
