@@ -1,8 +1,8 @@
+import json
 from IntsUtil import util
 
 _author_ = "int_soumen"
 _date_ = "2018-11-17"
-import json
 
 # This file has been made to simulate virtual GPIO
 

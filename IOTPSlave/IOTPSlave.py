@@ -9,8 +9,9 @@ from IOTPTransactionResponse import IOTPTransactionResponse
 from IOTPTransactionTypeInterrogation import IOTPTransactionTypeInterrogation
 from IOTPTransactionData import IOTPTransactionData
 from IOTPTransactionTypeCommand import IOTPTransactionTypeCommand
-from IntsUtil.util import log
-# from S4Timer.S4Timer import S4Timer
+from IntsUtil import util
+from IntsUtil.util import log, log_error
+from IntsSQLiteAccess import DatabaseManager
 
 if os.path.exists("/home/pi"):
     from S4Hw.S4HwInterface import init_gpio, operate_gpio_digital, operate_gpio_analog, get_gpio_status
@@ -80,6 +81,7 @@ class IOTPSlave:
         # signal LED GPIO 3
         init_gpio(3, 'O', 0)
         operate_gpio_digital(3, 1)
+        self.DB = DatabaseManager.Database(util.server_home + "/s4.db")
         pass
 
     @staticmethod
@@ -101,7 +103,7 @@ class IOTPSlave:
         analog_operand_count = 0
         doc_calculated = 0
         aoc_calculated = 0
-        log("IN CONFIG...")
+        log("IN CONFIG...", True)
         dir_path = self.slave_home
         c_file = open(dir_path + '/iotp.slaveconf')
 
@@ -148,7 +150,7 @@ class IOTPSlave:
                         self.digital_operand_list += "d{},".format(k + 1)
                         continue
                 except Exception, e:
-                    log(e.message)
+                    log_error(e)
                     pass
 
                 # check if analog operand
@@ -160,7 +162,7 @@ class IOTPSlave:
                         self.analog_operand_list += "a{},".format(k + 1)
                         continue
                 except Exception, e:
-                    print e
+                    log_error(e)
                     pass
 
             if digital_operand_count is not doc_calculated or analog_operand_count is not aoc_calculated:
@@ -223,7 +225,7 @@ class IOTPSlave:
         # self.server_offline_detection_timer.stop_timer()
         # self.server_offline_detection = False
 
-        log("FINDING SERVER @{}...".format((ip, port)))
+        log("FINDING SERVER @{}...".format((ip, port)), True)
         while True:
             # if self.connection_status is True:
             #     break
@@ -236,10 +238,10 @@ class IOTPSlave:
             except Exception, e:
                 print e
                 self.connection_status = False
-                log("RETRY...")
+                log("RETRY...", True)
                 time.sleep(self.conn_retry_sec - 1)
 
-        log("CONNECTED.OK.")
+        log("CONNECTED.OK.", True)
         # stop blinking
         self.stop_blinking()
 
@@ -252,10 +254,10 @@ class IOTPSlave:
                                                               IOTP_SLAVE_CONF[KEY_ANALOG_OPERAND_COUNT],
                                                               self.analog_operand_list)
             server_sock.sendall(init_req)
-            log("TX: >> " + init_req)
+            log("TX: >> " + init_req, True)
             """ Read response """
             response = self._fn_read_line(server_sock)
-            log("RX: << {}".format(response))
+            log("RX: << {}".format(response), True)
 
             res = regex.match(r"^\[(?P<status>[0-9]{3}),(?P<message>[A-z\s\d]+).*?\]$",
                               str(response), regex.I | regex.M)
@@ -269,53 +271,12 @@ class IOTPSlave:
                     self.handshake_done = False
                     log("HANDSHAKE.FAIL.")
             except RuntimeError, e:
-                print e
                 self.connection_status = False
-                log(e.message)
+                log_error(e)
         finally:
             threading.Timer(20.0, self.init_connection).start()
             return self.connection_status
-
-    # def read_line(self):
-    #     if not isinstance(self.server_sock, socket.socket):
-    #         raise Exception("Socket instance is required.")
-    #     string = ""
-    #     while self.connection_ok is True:
-    #         try:
-    #             """ Read one 1Byte """
-    #             d = str(self.server_sock.recv(1))
-    #             if len(d) is 0:
-    #                 try:
-    #                     """ Trying with a blank CR to check connection """
-    #                     self.server_sock.sendall("\n")
-    #                 except Exception, e:
-    #                     print e
-    #                     """ Server offline """
-    #                     # self.server_offline_detected()
-    #                     break
-    #                 # if self.server_offline_detection is False:
-    #                 # self.server_offline_detection_timer.start_timer()
-    #                 # self.server_offline_detection = True
-    #                 continue
-    #
-    #             # self.server_offline_detection_timer.stop_timer()
-    #             # self.server_offline_detection = False
-    #
-    #             if d == "\n" or d == "\r":
-    #                 break
-    #             string += d
-    #             continue
-    #         except Exception, e:
-    #             print e
-    #             pass
-    #     return string
-
-    # def server_offline_detected(self):
-    #     print "Server offline."
-    #     self.server_sock = None
-    #     self.connection_ok = False
-    #     self.handshake_done = False
-    #     pass
+        pass
 
     """ NEW STATELESS SLAVE IMPL """
 
@@ -326,15 +287,15 @@ class IOTPSlave:
 
         if self.slave_server is None:
             self.start_blinking()
-            log("WAIT FOR ETH...")
+            log("WAIT FOR ETH...", True)
             # configure the socket for start the IOTP server
             time.sleep(SLEEP_WAIT)
-            log("ETH OK.")
+            log("ETH OK.", True)
 
             # bind socket with IP and PORT
             try:
                 port = int(IOTP_SLAVE_CONF[KEY_PORT])
-                log("CREATING SERVER @ PORT{}...".format(port))
+                log("CREATING SERVER @ PORT{}...".format(port), True)
                 while True:
                     try:
                         self.slave_server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -342,21 +303,20 @@ class IOTPSlave:
                         self.slave_server.bind(('', port))
                         break
                     except Exception, e:
-                        print e
+                        log_error(e)
                         time.sleep(1)
 
                         # start listing to the incoming connection
-                log('SERVER OK.RUNNING.')
+                log('SERVER OK.RUNNING.', True)
                 self.stop_blinking()
                 self.s_listen()
                 return True
             except Exception, e:
-                print e
-                log("PORT BLOCKED")
+                log_error(e)
                 return False
         else:
-            log("SOCKET FAIL.")
             return False
+        pass
 
     def s_listen(self):
         BACK_LOG = 1
@@ -364,10 +324,10 @@ class IOTPSlave:
         self.slave_server.listen(BACK_LOG)
 
         while True:
-            log("WAIT FOR CMD...")
+            log("WAIT FOR CMD...", True)
             # accept a new connection
             conn, addr = self.slave_server.accept()
-            log("RECEIVED")
+            log("RECEIVED", True)
             # start a thread with client request
 
             self.sts_blink = True
@@ -386,8 +346,7 @@ class IOTPSlave:
 
     """ Communicate with IOTP Server """
 
-    @staticmethod
-    def _fn_communicate(in_server_conn, server_data):
+    def _communicate(self, in_server_conn, server_data):
         # read data from server
         print "RX: {}".format(server_data)
         # if data available
@@ -402,10 +361,19 @@ class IOTPSlave:
                     r = IOTPTransactionTypeCommand(iotp_request)
                     while r.has_next():
                         inf = r.next_operand_info()
-                        print 'operate: ', inf
+
                         operand_type = inf[INDEX_OPERAND_TYPE]
                         operand_id = inf[INDEX_OPERAND_ID]
                         operation = inf[INDEX_OPERATION]
+
+                        """ DATABASE OPERATION """
+                        self.DB.connect()
+                        self.DB.query(
+                            "INSERT INTO s4_operation_log(operation_time, slave_id, opration_type) VALUES (?, ?, ?)",
+                            (time.time(), operand_id, operation)
+                        )
+                        self.DB.commit()
+                        self.DB.disconnect()
 
                         try:
                             """ Search PIN """
@@ -415,8 +383,6 @@ class IOTPSlave:
                                 if hw_c is not None and hw_c[INDEX_OPERAND_ID] is operand_id:
                                     HWConf = hw_c
                                     break
-
-                            print HWConf
                             if HWConf is None:
                                 iotp_response.set_status(405)
                                 break
@@ -442,7 +408,7 @@ class IOTPSlave:
                                         iotp_response.set_status(200)
                                         pass
                         except RuntimeError, e:
-                            print e
+                            log_error(e)
                             iotp_response.set_status(500)
                             iotp_response.set_message(e.message)
                             break
@@ -476,7 +442,7 @@ class IOTPSlave:
                 print "TX: {}\\n".format(iotp_response.get_json())
                 in_server_conn.sendall(iotp_response.get_json() + "\n")
             except Exception, e:
-                print e
+                log_error(e)
                 pass
 
     # handle client in a thread
@@ -486,7 +452,7 @@ class IOTPSlave:
         if cmd_data is None:
             in_server_conn.close()
             return
-        self._fn_communicate(in_server_conn, cmd_data)
+        self._communicate(in_server_conn, cmd_data)
         return
         pass
 
