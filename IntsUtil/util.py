@@ -4,6 +4,15 @@ import datetime
 import traceback
 import sys
 
+HOME_DIR = SERVER_HOME = os.path.dirname(os.path.realpath(__file__))[:-9]
+
+if os.path.exists("/home/pi"):
+    LOG_PATH = '/home/pi/s4/IOTPSlave/iotp-slv-run.log'
+    HOME_DIR = '/home/pi/s4/IOTPSlave'
+    SERVER_HOME = HOME_DIR
+else:
+    LOG_PATH = HOME_DIR + '/iotp-slv-run.log'
+
 RED = "\033[1;31m"
 BLUE = "\033[1;34m"
 CYAN = "\033[1;36m"
@@ -12,21 +21,15 @@ RESET = "\033[0;0m"
 BOLD = "\033[;1m"
 REVERSE = "\033[;7m"
 
-home_dir = server_home = os.path.dirname(os.path.realpath(__file__))[:-9]
-
-if os.path.exists("/home/pi"):
-    LOG_PATH = '/home/pi/s4/iotp-slave-run.log'
-else:
-    LOG_PATH = home_dir + '/iotp-slave-run.log'
-
 
 def log(string, print_only=True):
     global LOG_PATH
+    print_only = False
     fp = open(LOG_PATH, 'a')
     if fp is not None and not print_only:
         ts = time.time()
         st = datetime.datetime.fromtimestamp(ts).strftime('%Y-%m-%d %H:%M:%S')
-        string = st + ":[m]: " + string
+        string = st + ":[m]: " + str(string)
         fp.write(string + "\n")
         fp.close()
     print string

@@ -12,9 +12,9 @@ _date_ = "16-Dec-2018"
 # This service run on slave HW to operate relays and analog outputs
 
 if __name__ == "__main__":
-    _version_ = "2.0.0"
+    _version_ = "2.1.7"
     log("Welcome to IOTP Slave version " + _version_, False)
-    slave_home = util.home_dir
+    slave_home = util.HOME_DIR
     slave = IOTPSlave(slave_home)
     slave.init_slave()
 

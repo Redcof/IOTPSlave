@@ -17,14 +17,15 @@ from IntsSQLiteAccess import DatabaseManager
 if os.path.exists("/home/pi"):
     from S4Hw.S4HwInterface import init_gpio, operate_gpio_digital, operate_gpio_analog, get_gpio_status
 
+    SLEEP_WAIT = 20
 else:
     from S4Hw.dev_S4HwInterface import init_gpio, operate_gpio_digital, operate_gpio_analog, get_gpio_status
 
+    SLEEP_WAIT = 0
+
 _author_ = "int_soumen"
 _date_ = "02-08-2018"
-_date_mod_ = "04-Jan-2019"
-
-SLEEP_WAIT = 5
+_date_mod_ = "31-Mar-2019"
 
 IOTP_SLAVE_CONF = {}
 KEY_STATUS_LED = "led"
@@ -62,12 +63,17 @@ INDEX_OPERAND_TYPE = 0
 INDEX_OPERAND_ID = 1
 INDEX_GPIO = 2
 INDEX_OPERATION = 2
-STATUS_LED_GPIO = 0
+
+STATUS_LED_GPIO = 3
 
 
 class IOTPSlave:
 
     def __init__(self, slave_home):
+        global SLEEP_WAIT
+        time.sleep(SLEEP_WAIT)
+        init_gpio(STATUS_LED_GPIO, 'O', 0)
+
         self.init_ok = False
         self.slave_home = slave_home
         self.connection_status = False
@@ -82,8 +88,8 @@ class IOTPSlave:
         # self.server_offline_detection = False
         self.sts_blink = False
         self.blink_pause = 0.3
-        self.DB = DatabaseManager.Database(util.server_home + "/s4.db")
-        self.iron_rod = HotFlag(20)
+        self.DB = DatabaseManager.Database(util.SERVER_HOME + "/s4.db")
+        # self.iron_rod = HotFlag(20)
         pass
 
     @staticmethod
@@ -106,8 +112,8 @@ class IOTPSlave:
         doc_calculated = 0
         aoc_calculated = 0
         log("IN CONFIG...", False)
-        dir_path = self.slave_home
-        c_file = open(dir_path + '/iotp.slaveconf')
+        conf_file_path = self.slave_home + '/iotp.slaveconf'
+        c_file = open(conf_file_path)
 
         # load the configuration to memory
         for line in c_file:
@@ -130,7 +136,6 @@ class IOTPSlave:
             # init status LED GPIO
             STATUS_LED_GPIO = int(IOTP_SLAVE_CONF[KEY_STATUS_LED])
 
-            init_gpio(STATUS_LED_GPIO, 'O', 0)
             operate_gpio_digital(STATUS_LED_GPIO, 1)
 
             digital_operand_count = int(IOTP_SLAVE_CONF[KEY_DIGITAL_OPERAND_COUNT])
@@ -210,14 +215,12 @@ class IOTPSlave:
         pass
 
     def blink(self, closing_value):
+        print "blinking..."
         while self.sts_blink is True:
-            print "blinking"
             operate_gpio_digital(STATUS_LED_GPIO, 0)
             time.sleep(self.blink_pause)
-            print "blinking"
             operate_gpio_digital(STATUS_LED_GPIO, 1)
             time.sleep(self.blink_pause)
-            print "blinking"
             operate_gpio_digital(STATUS_LED_GPIO, 0)
             time.sleep(self.blink_pause)
         operate_gpio_digital(STATUS_LED_GPIO, closing_value)
@@ -233,7 +236,7 @@ class IOTPSlave:
         # self.server_offline_detection_timer.stop_timer()
         # self.server_offline_detection = False
 
-        log("FINDING SERVER @{}...".format((server_ip, port)), False)
+        log("FINDING SERVER @{}...".format((server_ip, port)))
         while True:
             # if self.connection_status is True:
             #     break
@@ -249,7 +252,7 @@ class IOTPSlave:
                 log("RETRY...")
                 time.sleep(self.conn_retry_sec - 1)
 
-        log("CONNECTED.OK.", False)
+        log("CONNECTED.OK.")
         # stop blinking
         self.stop_blinking()
 
@@ -289,21 +292,16 @@ class IOTPSlave:
     """ NEW STATELESS SLAVE """
 
     def start_server(self):
-        global SLEEP_WAIT
         if self.connection_status is not True or self.handshake_done is not True:
             return False
 
         if self.slave_server is None:
             self.start_blinking()
-            log("WAIT FOR ETH...")
-            # configure the socket for start the IOTP server
-            time.sleep(SLEEP_WAIT)
-            log("ETH OK.")
 
             # bind socket with IP and PORT
             try:
                 port = int(IOTP_SLAVE_CONF[KEY_PORT])
-                log("CREATING SERVER @ PORT{}...".format(port),False)
+                log("CREATING SLAVE SERVER @ PORT{}...".format(port), False)
                 while True:
                     try:
                         self.slave_server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -315,7 +313,7 @@ class IOTPSlave:
                         time.sleep(1)
 
                         # start listing to the incoming connection
-                log('SERVER OK.RUNNING.', False)
+                log('SLAVE SERVER OK.RUNNING.', False)
                 self.stop_blinking()
                 self.s_listen()
                 return True
@@ -356,7 +354,7 @@ class IOTPSlave:
 
     def _communicate(self, in_server_conn, server_data):
         # read data from server
-        print "RX: {}".format(server_data)
+        log("RX: {}".format(server_data))
         # if data available
         if server_data is not "" and server_data is not None:
             try:
@@ -374,22 +372,15 @@ class IOTPSlave:
                         operand_id = inf[INDEX_OPERAND_ID]
                         operation = inf[INDEX_OPERATION]
 
-                        """ DATABASE OPERATION """
-                        self.DB.connect()
-                        self.DB.query(
-                            "INSERT INTO s4_operation_log(operation_time, slave_id, opration_type) VALUES (?, ?, ?)",
-                            (time.time(), operand_id, operation)
-                        )
-                        self.DB.commit()
-                        self.DB.disconnect()
-
                         try:
                             """ Search PIN """
                             HWConf = None
                             for k in range(0, len(HARDWARE_CONF)):
                                 hw_c = HARDWARE_CONF[k]
                                 if hw_c is not None and hw_c[INDEX_OPERAND_ID] is operand_id:
+                                    """ PIN Found """
                                     HWConf = hw_c
+                                    self.save_to_database(operand_id, operation)
                                     break
                             if HWConf is None:
                                 iotp_response.set_status(405)
@@ -405,17 +396,17 @@ class IOTPSlave:
                                         else:
                                             operation = 0
 
-                                        # TODO Perform Digital Operation
-                                        print operation, pin
+                                        # Perform Digital Operation
                                         operate_gpio_digital(pin, operation)
                                         iotp_response.set_status(200)
                                         pass
                                     elif pin_type == ANALOG_OPERAND_TYPE:
-                                        # TODO Perform Analog Operation
+                                        # Perform Analog Operation
                                         operate_gpio_analog(pin, operation)
                                         iotp_response.set_status(200)
                                         pass
                         except RuntimeError, e:
+                            print e
                             log_error(e)
                             iotp_response.set_status(500)
                             iotp_response.set_message(e.message)
@@ -447,9 +438,10 @@ class IOTPSlave:
                         iotp_response.set_message(status)
                         pass
                     pass
-                print "TX: {}\\n".format(iotp_response.get_json())
+                log("TX: {}\\n".format(iotp_response.get_json()))
                 in_server_conn.sendall(iotp_response.get_json() + "\n")
             except Exception, e:
+                print e
                 log_error(e)
                 pass
 
@@ -462,6 +454,18 @@ class IOTPSlave:
             return
         self._communicate(in_server_conn, cmd_data)
         return
+        pass
+
+    def save_to_database(self, operand_id, operation):
+        """ DATABASE OPERATION """
+        log("Save to Database")
+        self.DB.connect()
+        self.DB.query(
+            "INSERT INTO s4_operation_log(operation_time, slave_id, opration_type) VALUES (?, ?, ?)",
+            (time.time(), operand_id, operation)
+        )
+        self.DB.commit()
+        self.DB.disconnect()
         pass
 
     @staticmethod
@@ -486,9 +490,4 @@ class IOTPSlave:
                 string = None
                 break
         return string
-
-    def is_hot(self):
-        pass
-
-    def burn(self):
         pass

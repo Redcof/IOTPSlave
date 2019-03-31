@@ -1,13 +1,13 @@
-import json
 from IntsUtil import util
 
 _author_ = "int_soumen"
 _date_ = "2018-11-17"
+import json
 
 # This file has been made to simulate virtual GPIO
 
 VIRTUAL_GPIO = {}
-JSON_FILE_PATH = util.home_dir + "/operator-status.json"
+JSON_FILE_PATH = util.HOME_DIR + "/operator-status.json"
 
 
 # init GPIO pins
