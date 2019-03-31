@@ -10,6 +10,7 @@ from IOTPTransactionTypeInterrogation import IOTPTransactionTypeInterrogation
 from IOTPTransactionData import IOTPTransactionData
 from IOTPTransactionTypeCommand import IOTPTransactionTypeCommand
 from IntsUtil import util
+from IntsUtil.HotFlag import HotFlag
 from IntsUtil.util import log, log_error
 from IntsSQLiteAccess import DatabaseManager
 
@@ -26,6 +27,7 @@ _date_mod_ = "04-Jan-2019"
 SLEEP_WAIT = 5
 
 IOTP_SLAVE_CONF = {}
+KEY_STATUS_LED = "led"
 KEY_DIGITAL_OPERAND_COUNT = "don"
 KEY_ANALOG_OPERAND_COUNT = "aon"
 KEY_DIGITAL_OPERAND_PREFIX = "d"
@@ -44,6 +46,7 @@ DEFAULT_OPERAND = 0x0
 
 PIN_NONE = -1
 
+# maximum 8 HW
 HARDWARE_CONF = [
     None,
     None,
@@ -59,6 +62,7 @@ INDEX_OPERAND_TYPE = 0
 INDEX_OPERAND_ID = 1
 INDEX_GPIO = 2
 INDEX_OPERATION = 2
+STATUS_LED_GPIO = 0
 
 
 class IOTPSlave:
@@ -78,15 +82,13 @@ class IOTPSlave:
         # self.server_offline_detection = False
         self.sts_blink = False
         self.blink_pause = 0.3
-        # signal LED GPIO 3
-        init_gpio(3, 'O', 0)
-        operate_gpio_digital(3, 1)
         self.DB = DatabaseManager.Database(util.server_home + "/s4.db")
+        self.iron_rod = HotFlag(20)
         pass
 
     @staticmethod
-    def validate_conf_file():
-        key_map = (KEY_HOST_IP, KEY_SLAVE_ID,
+    def fn_validate_conf_file():
+        key_map = (KEY_HOST_IP, KEY_SLAVE_ID, KEY_STATUS_LED,
                    KEY_HOST_PORT, KEY_PORT, KEY_ANALOG_OPERAND_COUNT,
                    KEY_DIGITAL_OPERAND_COUNT)
         for k in key_map:
@@ -121,9 +123,15 @@ class IOTPSlave:
 
         # validate configuration file
         while True:
-            if self.validate_conf_file() is False:
+            if self.fn_validate_conf_file() is False:
                 self.status_code = 1  # mandatory key not found
                 break
+
+            # init status LED GPIO
+            STATUS_LED_GPIO = int(IOTP_SLAVE_CONF[KEY_STATUS_LED])
+
+            init_gpio(STATUS_LED_GPIO, 'O', 0)
+            operate_gpio_digital(STATUS_LED_GPIO, 1)
 
             digital_operand_count = int(IOTP_SLAVE_CONF[KEY_DIGITAL_OPERAND_COUNT])
             analog_operand_count = int(IOTP_SLAVE_CONF[KEY_ANALOG_OPERAND_COUNT])
@@ -150,7 +158,7 @@ class IOTPSlave:
                         self.digital_operand_list += "d{},".format(k + 1)
                         continue
                 except Exception, e:
-                    log_error(e)
+                    # log_error(e)
                     pass
 
                 # check if analog operand
@@ -162,7 +170,7 @@ class IOTPSlave:
                         self.analog_operand_list += "a{},".format(k + 1)
                         continue
                 except Exception, e:
-                    log_error(e)
+                    # log_error(e)
                     pass
 
             if digital_operand_count is not doc_calculated or analog_operand_count is not aoc_calculated:
@@ -204,35 +212,35 @@ class IOTPSlave:
     def blink(self, closing_value):
         while self.sts_blink is True:
             print "blinking"
-            operate_gpio_digital(3, 0)
+            operate_gpio_digital(STATUS_LED_GPIO, 0)
             time.sleep(self.blink_pause)
             print "blinking"
-            operate_gpio_digital(3, 1)
+            operate_gpio_digital(STATUS_LED_GPIO, 1)
             time.sleep(self.blink_pause)
             print "blinking"
-            operate_gpio_digital(3, 0)
+            operate_gpio_digital(STATUS_LED_GPIO, 0)
             time.sleep(self.blink_pause)
-        operate_gpio_digital(3, closing_value)
+        operate_gpio_digital(STATUS_LED_GPIO, closing_value)
         print "blink end."
 
     def init_connection(self):
         if self.init_ok is not True:
             return False
 
-        ip = str(IOTP_SLAVE_CONF[KEY_HOST_IP])
+        server_ip = str(IOTP_SLAVE_CONF[KEY_HOST_IP])
         port = int(IOTP_SLAVE_CONF[KEY_HOST_PORT])
 
         # self.server_offline_detection_timer.stop_timer()
         # self.server_offline_detection = False
 
-        log("FINDING SERVER @{}...".format((ip, port)), True)
+        log("FINDING SERVER @{}...".format((server_ip, port)), True)
         while True:
             # if self.connection_status is True:
             #     break
             try:
                 server_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
                 server_sock.setblocking(True)
-                server_sock.connect((ip, port))
+                server_sock.connect((server_ip, port))
                 self.connection_status = True
                 break
             except Exception, e:
@@ -278,7 +286,7 @@ class IOTPSlave:
             return self.connection_status
         pass
 
-    """ NEW STATELESS SLAVE IMPL """
+    """ NEW STATELESS SLAVE """
 
     def start_server(self):
         global SLEEP_WAIT
@@ -342,7 +350,7 @@ class IOTPSlave:
             # self.server_sock = None
             self.connection_status = False
             self.handshake_done = False
-            operate_gpio_digital(3, 1)
+            operate_gpio_digital(STATUS_LED_GPIO, 1)
 
     """ Communicate with IOTP Server """
 
@@ -478,3 +486,9 @@ class IOTPSlave:
                 string = None
                 break
         return string
+
+    def is_hot(self):
+        pass
+
+    def burn(self):
+        pass

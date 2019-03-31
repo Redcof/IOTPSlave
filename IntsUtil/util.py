@@ -4,12 +4,12 @@ import datetime
 import traceback
 import sys
 
-RED   = "\033[1;31m"
-BLUE  = "\033[1;34m"
-CYAN  = "\033[1;36m"
+RED = "\033[1;31m"
+BLUE = "\033[1;34m"
+CYAN = "\033[1;36m"
 GREEN = "\033[0;32m"
 RESET = "\033[0;0m"
-BOLD    = "\033[;1m"
+BOLD = "\033[;1m"
 REVERSE = "\033[;7m"
 
 home_dir = server_home = os.path.dirname(os.path.realpath(__file__))[:-9]
@@ -43,6 +43,10 @@ def log_error(e):
         string = st + ":[e]: " + e.message + " >> " + tb
         fp.write(string + "\n")
         fp.close()
+    pass
+
+
+def print_red(e):
     sys.stdout.write(RED)
     print e
     sys.stdout.write(RESET)

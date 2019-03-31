@@ -2,15 +2,16 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="878e631a-f483-406f-ac1b-0bf0baa89476" name="Default Changelist" comment="">
-      <change afterPath="$PROJECT_DIR$/IntsSQLiteAccess/DatabaseManager.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/IntsSQLiteAccess/__init__.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/IntsUtil/HotFlag.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/inspectionProfiles/Project_Default.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/inspectionProfiles/Project_Default.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/IOTPSlave/IOTPSlave.py" beforeDir="false" afterPath="$PROJECT_DIR$/IOTPSlave/IOTPSlave.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/IntsSQLiteAccess/DatabaseManager.py" beforeDir="false" afterPath="$PROJECT_DIR$/IntsSQLiteAccess/DatabaseManager.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/IntsUtil/util.py" beforeDir="false" afterPath="$PROJECT_DIR$/IntsUtil/util.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/S4Hw/dev_S4HwInterface.py" beforeDir="false" afterPath="$PROJECT_DIR$/S4Hw/dev_S4HwInterface.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/iotp-slave-run.log" beforeDir="false" afterPath="$PROJECT_DIR$/iotp-slave-run.log" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/iotp.slaveconf" beforeDir="false" afterPath="$PROJECT_DIR$/iotp.slaveconf" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/operator-status.json" beforeDir="false" afterPath="$PROJECT_DIR$/operator-status.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/s4.db" beforeDir="false" afterPath="$PROJECT_DIR$/s4.db" afterDir="false" />
     </list>
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
     <option name="SHOW_DIALOG" value="false" />
@@ -22,56 +23,94 @@
     <session id="2079284536">
       <usages-collector id="statistics.lifecycle.project">
         <counts>
-          <entry key="project.closed" value="6" />
+          <entry key="project.closed" value="17" />
           <entry key="project.open.time.0" value="1" />
-          <entry key="project.open.time.1" value="1" />
+          <entry key="project.open.time.1" value="5" />
+          <entry key="project.open.time.11" value="1" />
+          <entry key="project.open.time.12" value="1" />
+          <entry key="project.open.time.20" value="1" />
+          <entry key="project.open.time.24" value="1" />
+          <entry key="project.open.time.3" value="1" />
           <entry key="project.open.time.4" value="1" />
-          <entry key="project.open.time.5" value="1" />
-          <entry key="project.open.time.6" value="1" />
+          <entry key="project.open.time.5" value="2" />
+          <entry key="project.open.time.6" value="2" />
           <entry key="project.open.time.8" value="1" />
-          <entry key="project.opened" value="6" />
+          <entry key="project.opened" value="17" />
         </counts>
       </usages-collector>
       <usages-collector id="statistics.file.extensions.open">
         <counts>
           <entry key="json" value="2" />
-          <entry key="log" value="2" />
-          <entry key="py" value="23" />
+          <entry key="log" value="3" />
+          <entry key="py" value="28" />
           <entry key="pyi" value="2" />
-          <entry key="slaveconf" value="1" />
+          <entry key="slaveconf" value="2" />
         </counts>
       </usages-collector>
       <usages-collector id="statistics.file.types.open">
         <counts>
           <entry key="JSON" value="2" />
-          <entry key="Log" value="2" />
-          <entry key="PLAIN_TEXT" value="1" />
-          <entry key="Python" value="23" />
+          <entry key="Log" value="3" />
+          <entry key="PLAIN_TEXT" value="2" />
+          <entry key="Python" value="28" />
           <entry key="PythonStub" value="2" />
         </counts>
       </usages-collector>
       <usages-collector id="statistics.file.extensions.edit">
         <counts>
           <entry key="json" value="6" />
-          <entry key="py" value="1713" />
-          <entry key="slaveconf" value="23" />
+          <entry key="py" value="2296" />
+          <entry key="slaveconf" value="50" />
           <entry key="txt" value="1" />
         </counts>
       </usages-collector>
       <usages-collector id="statistics.file.types.edit">
         <counts>
           <entry key="JSON" value="6" />
-          <entry key="PLAIN_TEXT" value="24" />
-          <entry key="Python" value="1713" />
+          <entry key="PLAIN_TEXT" value="51" />
+          <entry key="Python" value="2296" />
         </counts>
       </usages-collector>
     </session>
   </component>
   <component name="FileEditorManager">
     <leaf SIDE_TABS_SIZE_LIMIT_KEY="300">
-      <file pinned="false" current-in-tab="true">
+      <file pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/IntsSQLiteAccess/__init__.py">
           <provider selected="true" editor-type-id="text-editor" />
+        </entry>
+      </file>
+      <file pinned="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/IntsUtil/util.py">
+          <provider selected="true" editor-type-id="text-editor">
+            <state relative-caret-position="475">
+              <caret line="29" column="23" selection-start-line="29" selection-start-column="23" selection-end-line="29" selection-end-column="23" />
+              <folding>
+                <element signature="e#0#9#0" expanded="true" />
+              </folding>
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file pinned="false" current-in-tab="true">
+        <entry file="file://$PROJECT_DIR$/iotp-slave-run.log">
+          <provider selected="true" editor-type-id="LogFileEditorProvider">
+            <state relative-caret-position="71">
+              <caret line="2080" lean-forward="true" selection-start-line="2080" selection-end-line="2080" />
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file pinned="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/IOTPSlave/IOTPSlave.py">
+          <provider selected="true" editor-type-id="text-editor">
+            <state relative-caret-position="7277">
+              <caret line="397" column="13" selection-start-line="397" selection-start-column="13" selection-end-line="397" selection-end-column="13" />
+              <folding>
+                <element signature="e#0#9#0" expanded="true" />
+              </folding>
+            </state>
+          </provider>
         </entry>
       </file>
     </leaf>
@@ -92,6 +131,7 @@
       <find>log(</find>
       <find>print</find>
       <find>except</find>
+      <find>operate_gpio_digital</find>
     </findStrings>
     <replaceStrings>
       <replace>this</replace>
@@ -105,20 +145,20 @@
     <option name="CHANGED_PATHS">
       <list>
         <option value="$PROJECT_DIR$/S4Hw/dev-io-status.json" />
-        <option value="$PROJECT_DIR$/iotp.slaveconf" />
         <option value="$PROJECT_DIR$/IntsSQLiteAccess/__init__.py" />
         <option value="$PROJECT_DIR$/S4Hw/__init__.py" />
         <option value="$PROJECT_DIR$/S4Hw/dev_S4HwInterface.py" />
         <option value="$PROJECT_DIR$/IntsUtil/util.py" />
-        <option value="$PROJECT_DIR$/IOTPSlave/IOTPSlave.py" />
         <option value="$PROJECT_DIR$/IntsSQLiteAccess/DatabaseManager.py" />
+        <option value="$PROJECT_DIR$/IntsUtil/HotFlag.py" />
+        <option value="$PROJECT_DIR$/IOTPSlave/IOTPSlave.py" />
+        <option value="$PROJECT_DIR$/iotp.slaveconf" />
       </list>
     </option>
   </component>
   <component name="ProjectFrameBounds">
-    <option name="x" value="79" />
     <option name="y" value="23" />
-    <option name="width" value="1152" />
+    <option name="width" value="1105" />
     <option name="height" value="827" />
   </component>
   <component name="ProjectView">
@@ -127,6 +167,7 @@
       <foldersAlwaysOnTop value="true" />
     </navigator>
     <panes>
+      <pane id="Course" />
       <pane id="ProjectPane">
         <subPane>
           <expand>
@@ -159,26 +200,10 @@
               <item name="IOTPSlave" type="462c0819:PsiDirectoryNode" />
               <item name="S4Timer" type="462c0819:PsiDirectoryNode" />
             </path>
-            <path>
-              <item name="IOTPSlave" type="b2602c69:ProjectViewProjectNode" />
-              <item name="External Libraries" type="cb654da1:ExternalLibrariesNode" />
-            </path>
-            <path>
-              <item name="IOTPSlave" type="b2602c69:ProjectViewProjectNode" />
-              <item name="External Libraries" type="cb654da1:ExternalLibrariesNode" />
-              <item name="&lt; Python 2.7 &gt;" type="70bed36:NamedLibraryElementNode" />
-            </path>
-            <path>
-              <item name="IOTPSlave" type="b2602c69:ProjectViewProjectNode" />
-              <item name="External Libraries" type="cb654da1:ExternalLibrariesNode" />
-              <item name="&lt; Python 2.7 &gt;" type="70bed36:NamedLibraryElementNode" />
-              <item name="-1199944087" type="70582d5e:PySkeletonsNode" />
-            </path>
           </expand>
           <select />
         </subPane>
       </pane>
-      <pane id="Course" />
     </panes>
   </component>
   <component name="PropertiesComponent">
@@ -229,15 +254,15 @@
     <configuration />
   </component>
   <component name="ToolWindowManager">
-    <frame x="79" y="23" width="1152" height="827" extended-state="0" />
+    <frame x="0" y="23" width="1105" height="827" extended-state="0" />
     <editor active="true" />
     <layout>
-      <window_info active="true" content_ui="combo" id="Project" order="0" visible="true" weight="0.21308577" />
+      <window_info content_ui="combo" id="Project" order="0" visible="true" weight="0.21217713" />
       <window_info id="Structure" order="1" weight="0.25" />
       <window_info anchor="bottom" id="Message" order="0" />
-      <window_info anchor="bottom" id="Find" order="1" weight="0.3286517" />
+      <window_info anchor="bottom" id="Find" order="1" weight="0.3283767" />
       <window_info anchor="bottom" id="Run" order="2" weight="0.3286517" />
-      <window_info anchor="bottom" id="Debug" order="3" weight="0.66292137" />
+      <window_info anchor="bottom" id="Debug" order="3" weight="0.66151685" />
       <window_info anchor="bottom" id="Cvs" order="4" weight="0.25" />
       <window_info anchor="bottom" id="Inspection" order="5" weight="0.4" />
       <window_info anchor="bottom" id="TODO" order="6" />
@@ -287,20 +312,6 @@
     <entry file="file://$PROJECT_DIR$/operator-status.json">
       <provider selected="true" editor-type-id="text-editor" />
     </entry>
-    <entry file="file://$PROJECT_DIR$/S4Hw/S4HwInterface.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state>
-          <caret line="15" column="27" selection-start-line="15" selection-start-column="27" selection-end-line="15" selection-end-column="27" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/iotp.slaveconf">
-      <provider selected="true" editor-type-id="text-editor">
-        <state>
-          <caret line="23" selection-start-line="23" selection-end-line="23" />
-        </state>
-      </provider>
-    </entry>
     <entry file="file://$APPLICATION_HOME_DIR$/helpers/typeshed/stdlib/2and3/sqlite3/__init__.pyi">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="15">
@@ -327,9 +338,6 @@
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="-1267">
           <caret line="3" lean-forward="true" selection-start-line="3" selection-end-line="3" />
-          <folding>
-            <element signature="e#90#100#0" expanded="true" />
-          </folding>
         </state>
       </provider>
     </entry>
@@ -340,57 +348,10 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/IOTPSlave/IOTPSlave.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="220">
-          <caret line="355" selection-start-line="355" selection-end-line="355" />
-          <folding>
-            <element signature="e#0#9#0" expanded="true" />
-            <element signature="e#2437#6018#0" />
-            <element signature="e#6058#6135#0" />
-            <element signature="e#6191#6281#0" />
-            <element signature="e#6327#6757#0" />
-            <element signature="e#6918#9419#0" />
-            <element signature="e#16457#17682#0" />
-          </folding>
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/iotp-slave-run.log">
-      <provider selected="true" editor-type-id="LogFileEditorProvider">
-        <state relative-caret-position="150">
-          <caret line="2694" column="31" selection-start-line="2694" selection-start-column="31" selection-end-line="2694" selection-end-column="31" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/IntsUtil/util.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="750">
-          <caret line="41" column="36" selection-start-line="41" selection-start-column="36" selection-end-line="41" selection-end-column="36" />
-          <folding>
-            <element signature="e#0#9#0" expanded="true" />
-          </folding>
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/IntsSQLiteAccess/DatabaseManager.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="-104">
-          <caret line="14" column="12" lean-forward="true" selection-start-line="14" selection-start-column="12" selection-end-line="14" selection-end-column="12" />
-          <folding>
-            <element signature="e#0#14#0" expanded="true" />
-            <marker date="1547394766226" expanded="true" signature="144:145" ph="..." />
-          </folding>
-        </state>
-      </provider>
-    </entry>
     <entry file="file://$PROJECT_DIR$/S4Hw/dev_S4HwInterface.py">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="494">
           <caret line="27" column="8" lean-forward="true" selection-start-line="27" selection-start-column="8" selection-end-line="27" selection-end-column="8" />
-          <folding>
-            <element signature="e#0#11#0" expanded="true" />
-          </folding>
         </state>
       </provider>
     </entry>
@@ -398,14 +359,66 @@
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="74">
           <caret line="10" column="21" lean-forward="true" selection-start-line="10" selection-start-column="21" selection-end-line="10" selection-end-column="21" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/iotp.slaveconf">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="190">
+          <caret line="10" column="31" lean-forward="true" selection-start-line="10" selection-start-column="31" selection-end-line="10" selection-end-column="31" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/IntsSQLiteAccess/DatabaseManager.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="38">
+          <caret line="2" column="25" selection-start-line="2" selection-start-column="25" selection-end-line="2" selection-end-column="25" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/IntsUtil/HotFlag.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="114">
+          <caret line="6" column="10" selection-start-line="6" selection-start-column="10" selection-end-line="6" selection-end-column="10" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/S4Hw/S4HwInterface.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="320">
+          <caret line="34" column="35" lean-forward="true" selection-start-line="34" selection-start-column="35" selection-end-line="34" selection-end-column="35" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/IntsSQLiteAccess/__init__.py">
+      <provider selected="true" editor-type-id="text-editor" />
+    </entry>
+    <entry file="file://$PROJECT_DIR$/IntsUtil/util.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="475">
+          <caret line="29" column="23" selection-start-line="29" selection-start-column="23" selection-end-line="29" selection-end-column="23" />
           <folding>
             <element signature="e#0#9#0" expanded="true" />
           </folding>
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/IntsSQLiteAccess/__init__.py">
-      <provider selected="true" editor-type-id="text-editor" />
+    <entry file="file://$PROJECT_DIR$/IOTPSlave/IOTPSlave.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="7277">
+          <caret line="397" column="13" selection-start-line="397" selection-start-column="13" selection-end-line="397" selection-end-column="13" />
+          <folding>
+            <element signature="e#0#9#0" expanded="true" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/iotp-slave-run.log">
+      <provider selected="true" editor-type-id="LogFileEditorProvider">
+        <state relative-caret-position="71">
+          <caret line="2080" lean-forward="true" selection-start-line="2080" selection-end-line="2080" />
+        </state>
+      </provider>
     </entry>
   </component>
 </project>

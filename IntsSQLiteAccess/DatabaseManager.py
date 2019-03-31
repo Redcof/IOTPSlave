@@ -1,6 +1,6 @@
 import sqlite3
 
-from IntsUtil.util import log_error
+from IntsUtil.util import print_red
 
 _author_ = "int_soumen"
 _date_ = "2019-Jan-13"
@@ -44,7 +44,7 @@ class Database:
         try:
             self.__result = self.__cursor.execute(query, params)
         except Exception, e:
-            log_error(e)
+            print_red(e)
             pass
         return self.__result
         pass
