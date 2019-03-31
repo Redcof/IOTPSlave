@@ -20,7 +20,7 @@ else:
     LOG_PATH = home_dir + '/iotp-slave-run.log'
 
 
-def log(string, print_only=False):
+def log(string, print_only=True):
     global LOG_PATH
     fp = open(LOG_PATH, 'a')
     if fp is not None and not print_only:

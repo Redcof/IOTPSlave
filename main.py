@@ -13,7 +13,7 @@ _date_ = "16-Dec-2018"
 
 if __name__ == "__main__":
     _version_ = "2.0.0"
-    log("Welcome to IOTP Slave version " + _version_)
+    log("Welcome to IOTP Slave version " + _version_, False)
     slave_home = util.home_dir
     slave = IOTPSlave(slave_home)
     slave.init_slave()
@@ -29,4 +29,4 @@ if __name__ == "__main__":
     except KeyboardInterrupt, e:
         slave.stop()
         pass
-    log("EXIT.")
+    log("EXIT.", False)

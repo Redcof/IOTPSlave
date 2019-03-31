@@ -105,7 +105,7 @@ class IOTPSlave:
         analog_operand_count = 0
         doc_calculated = 0
         aoc_calculated = 0
-        log("IN CONFIG...", True)
+        log("IN CONFIG...", False)
         dir_path = self.slave_home
         c_file = open(dir_path + '/iotp.slaveconf')
 
@@ -190,12 +190,12 @@ class IOTPSlave:
             print IOTP_SLAVE_CONF
 
             self.init_ok = True
-            log("CONFIG OK.")
+            log("CONFIG OK.", False)
             self.start_blinking()
             break  # while loop
 
         if self.init_ok is not True:
-            log("CONFIG FAILED.")
+            log("CONFIG FAILED.", False)
             self.blink_pause = 1
             self.start_blinking()
 
@@ -233,7 +233,7 @@ class IOTPSlave:
         # self.server_offline_detection_timer.stop_timer()
         # self.server_offline_detection = False
 
-        log("FINDING SERVER @{}...".format((server_ip, port)), True)
+        log("FINDING SERVER @{}...".format((server_ip, port)), False)
         while True:
             # if self.connection_status is True:
             #     break
@@ -246,10 +246,10 @@ class IOTPSlave:
             except Exception, e:
                 print e
                 self.connection_status = False
-                log("RETRY...", True)
+                log("RETRY...")
                 time.sleep(self.conn_retry_sec - 1)
 
-        log("CONNECTED.OK.", True)
+        log("CONNECTED.OK.", False)
         # stop blinking
         self.stop_blinking()
 
@@ -262,10 +262,10 @@ class IOTPSlave:
                                                               IOTP_SLAVE_CONF[KEY_ANALOG_OPERAND_COUNT],
                                                               self.analog_operand_list)
             server_sock.sendall(init_req)
-            log("TX: >> " + init_req, True)
+            log("TX: >> " + init_req)
             """ Read response """
             response = self._fn_read_line(server_sock)
-            log("RX: << {}".format(response), True)
+            log("RX: << {}".format(response))
 
             res = regex.match(r"^\[(?P<status>[0-9]{3}),(?P<message>[A-z\s\d]+).*?\]$",
                               str(response), regex.I | regex.M)
@@ -295,15 +295,15 @@ class IOTPSlave:
 
         if self.slave_server is None:
             self.start_blinking()
-            log("WAIT FOR ETH...", True)
+            log("WAIT FOR ETH...")
             # configure the socket for start the IOTP server
             time.sleep(SLEEP_WAIT)
-            log("ETH OK.", True)
+            log("ETH OK.")
 
             # bind socket with IP and PORT
             try:
                 port = int(IOTP_SLAVE_CONF[KEY_PORT])
-                log("CREATING SERVER @ PORT{}...".format(port), True)
+                log("CREATING SERVER @ PORT{}...".format(port),False)
                 while True:
                     try:
                         self.slave_server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -315,7 +315,7 @@ class IOTPSlave:
                         time.sleep(1)
 
                         # start listing to the incoming connection
-                log('SERVER OK.RUNNING.', True)
+                log('SERVER OK.RUNNING.', False)
                 self.stop_blinking()
                 self.s_listen()
                 return True
@@ -332,10 +332,10 @@ class IOTPSlave:
         self.slave_server.listen(BACK_LOG)
 
         while True:
-            log("WAIT FOR CMD...", True)
+            log("WAIT FOR CMD...")
             # accept a new connection
             conn, addr = self.slave_server.accept()
-            log("RECEIVED", True)
+            log("RECEIVED")
             # start a thread with client request
 
             self.sts_blink = True
