@@ -42,6 +42,12 @@ def get_gpio_status(gpio):
 
 # update GPIO status to json file
 def update_opr_sts_json():
-    with open(JSON_FILE_PATH, "w") as data_file:
-        json.dump(VIRTUAL_GPIO, data_file, indent=2)
+    try:
+        with open(JSON_FILE_PATH, "w") as data_file:
+            json.dump(VIRTUAL_GPIO, data_file, indent=2)
+            data_file.close()
+            pass
+        pass
+    except Exception,e:
+        pass
     pass

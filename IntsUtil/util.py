@@ -7,8 +7,8 @@ import sys
 HOME_DIR = SERVER_HOME = os.path.dirname(os.path.realpath(__file__))[:-9]
 
 if os.path.exists("/home/pi"):
-    LOG_PATH = '/home/pi/s4/IOTPSlave/iotp-slv-run.log'
-    HOME_DIR = '/home/pi/s4/IOTPSlave'
+    LOG_PATH = '/home/pi/s4/IOTPSlaveCore/iotp-slv-run.log'
+    HOME_DIR = '/home/pi/s4/IOTPSlaveCore'
     SERVER_HOME = HOME_DIR
 else:
     LOG_PATH = HOME_DIR + '/iotp-slv-run.log'
@@ -24,7 +24,6 @@ REVERSE = "\033[;7m"
 
 def log(string, print_only=True):
     global LOG_PATH
-    print_only = False
     fp = open(LOG_PATH, 'a')
     if fp is not None and not print_only:
         ts = time.time()
@@ -53,4 +52,14 @@ def print_red(e):
     sys.stdout.write(RED)
     print e
     sys.stdout.write(RESET)
+    pass
+
+
+def is_numeric(o):
+    type_ = type(o).__name__
+    # print type_
+    if type_ == 'int' or type_ == 'float' or type_ == 'long':
+        return True
+    else:
+        return False
     pass

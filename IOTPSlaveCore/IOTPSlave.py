@@ -10,9 +10,9 @@ from IOTPTransactionTypeInterrogation import IOTPTransactionTypeInterrogation
 from IOTPTransactionData import IOTPTransactionData
 from IOTPTransactionTypeCommand import IOTPTransactionTypeCommand
 from IntsUtil import util
-from IntsUtil.HotFlag import HotFlag
 from IntsUtil.util import log, log_error
 from IntsSQLiteAccess import DatabaseManager
+from S4Hw.S4Blink import S4LED
 
 if os.path.exists("/home/pi"):
     from S4Hw.S4HwInterface import init_gpio, operate_gpio_digital, operate_gpio_analog, get_gpio_status
@@ -65,6 +65,7 @@ INDEX_GPIO = 2
 INDEX_OPERATION = 2
 
 STATUS_LED_GPIO = 3
+blink_level = 0
 
 
 class IOTPSlave:
@@ -72,8 +73,8 @@ class IOTPSlave:
     def __init__(self, slave_home):
         global SLEEP_WAIT
         time.sleep(SLEEP_WAIT)
-        init_gpio(STATUS_LED_GPIO, 'O', 0)
-
+        # init_gpio(STATUS_LED_GPIO, 'O', 0)
+        self.StatusLED = S4LED(STATUS_LED_GPIO)
         self.init_ok = False
         self.slave_home = slave_home
         self.connection_status = False
@@ -87,7 +88,9 @@ class IOTPSlave:
         # self.server_offline_detection_timer = S4Timer(3, self.server_offline_detected)
         # self.server_offline_detection = False
         self.sts_blink = False
-        self.blink_pause = 0.3
+        self.blink_pause = 0.2
+        self.blink_retain = 0.1
+        self.start_blinking()
         self.DB = DatabaseManager.Database(util.SERVER_HOME + "/s4.db")
         # self.iron_rod = HotFlag(20)
         pass
@@ -134,9 +137,8 @@ class IOTPSlave:
                 break
 
             # init status LED GPIO
-            STATUS_LED_GPIO = int(IOTP_SLAVE_CONF[KEY_STATUS_LED])
-
-            operate_gpio_digital(STATUS_LED_GPIO, 1)
+            # STATUS_LED_GPIO = int(IOTP_SLAVE_CONF[KEY_STATUS_LED])
+            # operate_gpio_digital(STATUS_LED_GPIO, 1)
 
             digital_operand_count = int(IOTP_SLAVE_CONF[KEY_DIGITAL_OPERAND_COUNT])
             analog_operand_count = int(IOTP_SLAVE_CONF[KEY_ANALOG_OPERAND_COUNT])
@@ -191,8 +193,8 @@ class IOTPSlave:
                 if pin is not None:
                     init_gpio(pin[INDEX_GPIO], 'O', 0)
 
-            print HARDWARE_CONF
-            print IOTP_SLAVE_CONF
+            # print HARDWARE_CONF
+            # print IOTP_SLAVE_CONF
 
             self.init_ok = True
             log("CONFIG OK.", False)
@@ -205,26 +207,31 @@ class IOTPSlave:
             self.start_blinking()
 
     def start_blinking(self):
-        self.sts_blink = True
-        start_new_thread(self.blink, (1,))
+        global blink_level
+        if self.sts_blink is False:
+            blink_level = (blink_level + 1)
+            self.sts_blink = True
+            start_new_thread(self.blink, (1,))
         pass
 
     def stop_blinking(self, closing_value=0):
-        start_new_thread(self.blink, (closing_value,))
+        global blink_level
+        blink_level = (blink_level - 1)
         self.sts_blink = False
+        time.sleep(1)
+        start_new_thread(self.blink, (closing_value,))
         pass
 
     def blink(self, closing_value):
-        print "blinking..."
+        global blink_level
+        print "blinking... LEVEL" + str(blink_level)
         while self.sts_blink is True:
-            operate_gpio_digital(STATUS_LED_GPIO, 0)
+            self.StatusLED.off()
             time.sleep(self.blink_pause)
-            operate_gpio_digital(STATUS_LED_GPIO, 1)
-            time.sleep(self.blink_pause)
-            operate_gpio_digital(STATUS_LED_GPIO, 0)
-            time.sleep(self.blink_pause)
+            self.StatusLED.on()
+            time.sleep(self.blink_retain)
         operate_gpio_digital(STATUS_LED_GPIO, closing_value)
-        print "blink end."
+        print "blink end. LEVEL" + str(blink_level)
 
     def init_connection(self):
         if self.init_ok is not True:
@@ -248,10 +255,10 @@ class IOTPSlave:
                 break
             except Exception, e:
                 print e
+                self.start_blinking()
                 self.connection_status = False
                 log("RETRY...")
                 time.sleep(self.conn_retry_sec - 1)
-
         log("CONNECTED.OK.")
         # stop blinking
         self.stop_blinking()

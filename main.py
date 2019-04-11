@@ -1,7 +1,7 @@
 import os
 import time
 
-from IOTPSlave.IOTPSlave import IOTPSlave
+from IOTPSlaveCore.IOTPSlave import IOTPSlave
 from IntsUtil import util
 from IntsUtil.util import log
 

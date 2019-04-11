@@ -4,7 +4,7 @@ author  = int_soumen
 date    = 02-08-2018
 
 # Slave configuration
-host      = 192.168.0.106
+host      = 192.168.0.105
 host_port = 10700
 port      = 10701
 
