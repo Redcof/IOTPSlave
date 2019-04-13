@@ -114,7 +114,7 @@ class IOTPSlave:
         analog_operand_count = 0
         doc_calculated = 0
         aoc_calculated = 0
-        log("IN CONFIG...", False)
+        log("IN CONFIG...")
         conf_file_path = self.slave_home + '/iotp.slaveconf'
         c_file = open(conf_file_path)
 
@@ -197,12 +197,12 @@ class IOTPSlave:
             # print IOTP_SLAVE_CONF
 
             self.init_ok = True
-            log("CONFIG OK.", False)
+            log("CONFIG OK.")
             self.start_blinking()
             break  # while loop
 
         if self.init_ok is not True:
-            log("CONFIG FAILED.", False)
+            log("CONFIG FAILED.")
             self.blink_pause = 1
             self.start_blinking()
 
@@ -216,9 +216,10 @@ class IOTPSlave:
 
     def stop_blinking(self, closing_value=0):
         global blink_level
-        blink_level = (blink_level - 1)
-        self.sts_blink = False
-        time.sleep(1)
+        if blink_level > 0:
+            blink_level = (blink_level - 1)
+            self.sts_blink = False
+            time.sleep(1)
         start_new_thread(self.blink, (closing_value,))
         pass
 
@@ -243,7 +244,7 @@ class IOTPSlave:
         # self.server_offline_detection_timer.stop_timer()
         # self.server_offline_detection = False
 
-        log("FINDING SERVER @{}...".format((server_ip, port)))
+        # log("FINDING SERVER @{}...".format((server_ip, port)))
         while True:
             # if self.connection_status is True:
             #     break
@@ -257,13 +258,14 @@ class IOTPSlave:
                 print e
                 self.start_blinking()
                 self.connection_status = False
-                log("RETRY...")
+                log_error(e)
                 time.sleep(self.conn_retry_sec - 1)
-        log("CONNECTED.OK.")
+        # log("CONNECTED.OK.")
         # stop blinking
         self.stop_blinking()
 
         try:
+            # log("Connecting to server...")
             """ Send Connection Handshake """
             # byte://20/d:4[d1,d3,d4,d5]/a:2[a2,a6]
             init_req = "byte://{}/d:{}[{}]/a:{}[{}]\n".format(IOTP_SLAVE_CONF[KEY_SLAVE_ID],
@@ -272,10 +274,10 @@ class IOTPSlave:
                                                               IOTP_SLAVE_CONF[KEY_ANALOG_OPERAND_COUNT],
                                                               self.analog_operand_list)
             server_sock.sendall(init_req)
-            log("TX: >> " + init_req)
+            # log("TX: >> " + init_req)
             """ Read response """
             response = self._fn_read_line(server_sock)
-            log("RX: << {}".format(response))
+            # log("RX: << {}".format(response))
 
             res = regex.match(r"^\[(?P<status>[0-9]{3}),(?P<message>[A-z\s\d]+).*?\]$",
                               str(response), regex.I | regex.M)
@@ -284,10 +286,10 @@ class IOTPSlave:
             try:
                 if int(res['status']) is 200:
                     self.handshake_done = True
-                    log("HANDSHAKE.OK.")
+                    # log("HANDSHAKE.OK.")
                 else:
                     self.handshake_done = False
-                    log("HANDSHAKE.FAIL.")
+                    # log("HANDSHAKE.FAIL.")
             except RuntimeError, e:
                 self.connection_status = False
                 log_error(e)
@@ -308,7 +310,7 @@ class IOTPSlave:
             # bind socket with IP and PORT
             try:
                 port = int(IOTP_SLAVE_CONF[KEY_PORT])
-                log("CREATING SLAVE SERVER @ PORT{}...".format(port), False)
+                log("Creating Slave Listener @ PORT{}...".format(port), False)
                 while True:
                     try:
                         self.slave_server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -320,7 +322,7 @@ class IOTPSlave:
                         time.sleep(1)
 
                         # start listing to the incoming connection
-                log('SLAVE SERVER OK.RUNNING.', False)
+                log('Slave Listener is running OK.', False)
                 self.stop_blinking()
                 self.s_listen()
                 return True
@@ -340,7 +342,7 @@ class IOTPSlave:
             log("WAIT FOR CMD...")
             # accept a new connection
             conn, addr = self.slave_server.accept()
-            log("RECEIVED")
+            # log("RECEIVED")
             # start a thread with client request
 
             self.sts_blink = True
@@ -465,7 +467,7 @@ class IOTPSlave:
 
     def save_to_database(self, operand_id, operation):
         """ DATABASE OPERATION """
-        log("Save to Database")
+        # log("Save to Database")
         self.DB.connect()
         self.DB.query(
             "INSERT INTO s4_operation_log(operation_time, slave_id, opration_type) VALUES (?, ?, ?)",

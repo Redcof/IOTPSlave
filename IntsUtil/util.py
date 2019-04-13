@@ -22,7 +22,7 @@ BOLD = "\033[;1m"
 REVERSE = "\033[;7m"
 
 
-def log(string, print_only=True):
+def log(string, print_only=False):
     global LOG_PATH
     fp = open(LOG_PATH, 'a')
     if fp is not None and not print_only:
@@ -44,7 +44,9 @@ def log_error(e):
         st = datetime.datetime.fromtimestamp(ts).strftime('%Y-%m-%d %H:%M:%S')
         string = st + ":[e]: " + e.message + " >> " + tb
         fp.write(string + "\n")
+        traceback.print_exc(file=fp)
         fp.close()
+        pass
     pass
 
 
