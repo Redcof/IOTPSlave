@@ -12,9 +12,9 @@ _date_ = "16-Dec-2018"
 # This service run on slave HW to operate relays and analog outputs
 
 if __name__ == "__main__":
-    _version_ = "2.1.7"
-    log("Welcome to IOTP Slave version " + _version_, False)
-    slave_home = util.HOME_DIR
+    _version_ = "3.5.0"
+    log("Welcome to IOTP Slave version " + _version_)
+    slave_home = os.path.dirname(os.path.realpath(__file__))
     slave = IOTPSlave(slave_home)
     slave.init_slave()
 
@@ -29,4 +29,4 @@ if __name__ == "__main__":
     except KeyboardInterrupt, e:
         slave.stop()
         pass
-    log("EXIT.", False)
+    log("EXIT.")

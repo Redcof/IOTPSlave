@@ -4,14 +4,12 @@ import datetime
 import traceback
 import sys
 
-HOME_DIR = SERVER_HOME = os.path.dirname(os.path.realpath(__file__))[:-9]
-
+HOME_DIR = os.path.dirname(os.path.realpath(__file__))[:-9]
 if os.path.exists("/home/pi"):
-    LOG_PATH = '/home/pi/s4/IOTPSlaveCore/iotp-slv-run.log'
-    HOME_DIR = '/home/pi/s4/IOTPSlaveCore'
-    SERVER_HOME = HOME_DIR
+    LOG_PATH = '/home/pi/s4/activity.log'
 else:
-    LOG_PATH = HOME_DIR + '/iotp-slv-run.log'
+    current_dir = os.path.dirname(os.path.realpath(__file__))
+    LOG_PATH = current_dir + '/activity.log'
 
 RED = "\033[1;31m"
 BLUE = "\033[1;34m"
@@ -22,10 +20,10 @@ BOLD = "\033[;1m"
 REVERSE = "\033[;7m"
 
 
-def log(string, print_only=False):
+def log(string):
     global LOG_PATH
     fp = open(LOG_PATH, 'a')
-    if fp is not None and not print_only:
+    if fp is not None:
         ts = time.time()
         st = datetime.datetime.fromtimestamp(ts).strftime('%Y-%m-%d %H:%M:%S')
         string = st + ":[m]: " + str(string)
@@ -37,13 +35,14 @@ def log(string, print_only=False):
 
 def log_error(e):
     global LOG_PATH
-    tb = traceback.format_exc()
+    print e
     fp = open(LOG_PATH, 'a')
     if fp is not None:
         ts = time.time()
         st = datetime.datetime.fromtimestamp(ts).strftime('%Y-%m-%d %H:%M:%S')
-        string = st + ":[e]: " + e.message + " >> " + tb
+        string = st + ":[e]: " + e.message
         fp.write(string + "\n")
+        print_red(string)
         traceback.print_exc(file=fp)
         fp.close()
         pass

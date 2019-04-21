@@ -1,4 +1,7 @@
+import os
+
 from IntsUtil import util
+from IntsUtil.util import HOME_DIR
 
 _author_ = "int_soumen"
 _date_ = "2018-11-17"
@@ -7,7 +10,7 @@ import json
 # This file has been made to simulate virtual GPIO
 
 VIRTUAL_GPIO = {}
-JSON_FILE_PATH = util.HOME_DIR + "/operator-status.json"
+JSON_FILE_PATH = HOME_DIR + '/operator-status.json'
 
 
 # init GPIO pins
@@ -48,6 +51,6 @@ def update_opr_sts_json():
             data_file.close()
             pass
         pass
-    except Exception,e:
+    except Exception, e:
         pass
     pass
